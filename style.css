@@ -1,0 +1,42 @@
+body, html { height: 100%; margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f0f2f5; color: #1f2937; }
+.layout { display: flex; height: 100vh; }
+.sidebar { width: 220px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e5e7eb; padding: 20px; }
+.logo { font-size: 1.5rem; font-weight: 700; color: #2563eb; margin-bottom: 2rem; }
+.main-content { flex-grow: 1; padding: 2rem; overflow-y: auto; display: flex; flex-direction: column; }
+.header { margin-bottom: 2rem; }
+.dashboard-panels { width: 100%; margin-bottom: 3rem; }
+.panels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; width: 100%; align-items: stretch; }
+.plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; width: 100%; }
+.card { background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s; }
+.card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transform: translateY(-3px); }
+.fab { position: fixed; bottom: 2rem; right: 2rem; background: #2563eb; color: #fff; border: none; border-radius: 50%; width: 56px; height: 56px; font-size: 24px; cursor: pointer; }
+.dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.dialog-content { background: #fff; width: 95vw; height: 90vh; border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; overflow: hidden;}
+.panel-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; padding: 1.5rem; min-height: 250px; }
+.panel-card h4 { margin: 0 0 15px 0; color: #2563eb; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.panel-content { flex: 1; overflow-y: auto; font-size: 14px; }
+/* 小组件内部样式 */
+.widget-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+.widget-row:last-child { border-bottom: none; }
+.widget-row b { color: #2563eb; }
+
+/* 在 style.css 末尾追加以下样式以支持卡片右上角的图钉按钮和更好的 Widget 布局 */
+.card { position: relative; } /* 为绝对定位图钉做准备 */
+.pin-btn { 
+    position: absolute; top: 12px; right: 12px; background: #f3f4f6; 
+    border: none; border-radius: 50%; width: 32px; height: 32px; 
+    display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; color: #9ca3af; transition: 0.2s; z-index: 10;
+}
+.pin-btn:hover { background: #e5e7eb; color: #2563eb; }
+
+/* 专门美化面板内的小组件样式 */
+.widget-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+.widget-row:last-child { border-bottom: none; }
+.widget-row b { color: #1f2937; }
+.widget-action-btn { 
+    width: 100%; padding: 10px; background: #eff6ff; color: #2563eb; 
+    border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
+    margin-top: 15px; transition: 0.2s; 
+}
+.widget-action-btn:hover { background: #dbeafe; }

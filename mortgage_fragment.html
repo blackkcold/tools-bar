@@ -1,0 +1,71 @@
+<div style="padding:20px; font-family: 'Inter', sans-serif;">
+    <h3 style="margin-top:0; color:#2563eb;">房贷组合计算器</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+        <div>
+            <label style="display:block;margin-bottom:5px;font-size:14px;color:#4b5563;">商业贷款总额 (万元)</label>
+            <input type="number" id="mort-comm" value="100" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div>
+            <label style="display:block;margin-bottom:5px;font-size:14px;color:#4b5563;">商贷年利率 (%)</label>
+            <input type="number" id="mort-comm-rate" value="4.1" step="0.01" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div>
+            <label style="display:block;margin-bottom:5px;font-size:14px;color:#4b5563;">公积金贷款总额 (万元)</label>
+            <input type="number" id="mort-fund" value="0" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div>
+            <label style="display:block;margin-bottom:5px;font-size:14px;color:#4b5563;">公积金年利率 (%)</label>
+            <input type="number" id="mort-fund-rate" value="3.1" step="0.01" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div style="grid-column:span 2;">
+            <label style="display:block;margin-bottom:5px;font-size:14px;color:#4b5563;">贷款期限 (年)</label>
+            <select id="mort-years" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                <option value="10">10年 (120期)</option>
+                <option value="20">20年 (240期)</option>
+                <option value="30" selected>30年 (360期)</option>
+            </select>
+        </div>
+    </div>
+    
+    <button onclick="calculateMortgage()" style="width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">计算明细</button>
+    
+    <div id="mort-result" style="margin-top:20px; padding:20px; background:#f3f4f6; border-radius:8px; display:none;">
+        <h4 style="margin-top:0;">等额本息 (每月还款额固定)</h4>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>每月还款：</span><strong id="res-monthly" style="color:#ef4444;font-size:18px;">0</strong></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>贷款总额：</span><span id="res-total-loan">0</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>支付利息：</span><span id="res-total-int">0</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-top:1px dashed #ccc; padding-top:8px;"><span>还款总额：</span><strong id="res-total-pay">0</strong></div>
+    </div>
+</div>
+
+<script>
+    function calculateMortgage() {
+        const commP = (parseFloat(document.getElementById('mort-comm').value) || 0) * 10000;
+        const commR = (parseFloat(document.getElementById('mort-comm-rate').value) || 0) / 100 / 12;
+        const fundP = (parseFloat(document.getElementById('mort-fund').value) || 0) * 10000;
+        const fundR = (parseFloat(document.getElementById('mort-fund-rate').value) || 0) / 100 / 12;
+        const n = parseInt(document.getElementById('mort-years').value) * 12;
+
+        let commMonthly = 0;
+        let fundMonthly = 0;
+
+        if (commP > 0 && commR > 0) {
+            commMonthly = commP * commR * Math.pow(1 + commR, n) / (Math.pow(1 + commR, n) - 1);
+        }
+        if (fundP > 0 && fundR > 0) {
+            fundMonthly = fundP * fundR * Math.pow(1 + fundR, n) / (Math.pow(1 + fundR, n) - 1);
+        }
+
+        const totalMonthly = commMonthly + fundMonthly;
+        const totalLoan = commP + fundP;
+        const totalPay = totalMonthly * n;
+        const totalInt = totalPay - totalLoan;
+
+        document.getElementById('res-monthly').innerText = totalMonthly.toFixed(2) + ' 元';
+        document.getElementById('res-total-loan').innerText = (totalLoan / 10000).toFixed(2) + ' 万元';
+        document.getElementById('res-total-int').innerText = (totalInt / 10000).toFixed(2) + ' 万元';
+        document.getElementById('res-total-pay').innerText = (totalPay / 10000).toFixed(2) + ' 万元';
+        
+        document.getElementById('mort-result').style.display = 'block';
+    }
+</script>

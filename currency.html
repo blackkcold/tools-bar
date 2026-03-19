@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>汇率对比</title>
+    <link rel="stylesheet" href="form-theme.css">
+    <style>
+        body { padding: 20px; background: #fff; }
+        .row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6; font-size: 16px; }
+        .row strong { color: #2563eb; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h3 style="margin-top:0; color:#2563eb;">多国汇率实时换算</h3>
+    <div style="display:flex; gap:10px;">
+        <input type="number" id="amount" value="100" oninput="convert()" style="flex:2;">
+        <select id="baseCur" onchange="convert()" style="flex:1;">
+            <option value="USD">USD 美元</option>
+            <option value="CNY" selected>CNY 人民币</option>
+            <option value="EUR">EUR 欧元</option>
+            <option value="JPY">JPY 日元</option>
+            <option value="GBP">GBP 英镑</option>
+        </select>
+    </div>
+    
+    <div id="results" style="margin-top:20px;">
+        <div style="text-align:center; color:#6b7280;">实时数据拉取中...</div>
+    </div>
+
+    <script>
+        let rates = {};
+        async function init() {
+            try {
+                const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+                const data = await res.json();
+                rates = data.rates;
+                convert();
+            } catch {
+                document.getElementById('results').innerHTML = '<div style="color:red;text-align:center;">汇率API请求失败，请检查网络</div>';
+            }
+        }
+        function convert() {
+            if(!rates['USD']) return; // Not loaded yet
+            const amt = parseFloat(document.getElementById('amount').value) || 0;
+            const base = document.getElementById('baseCur').value;
+            // Convert to USD first
+            const usdAmt = amt / rates[base];
+            
+            const targets = ['CNY', 'USD', 'EUR', 'JPY', 'GBP', 'AUD', 'HKD', 'SGD', 'CAD'];
+            let html = '';
+            targets.forEach(c => {
+                if(c !== base) {
+                    const val = (usdAmt * rates[c]).toFixed(2);
+                    html += `<div class="row"><span>${c}</span><strong>${val}</strong></div>`;
+                }
+            });
+            document.getElementById('results').innerHTML = html;
+        }
+        init();
+    </script>
+</body>
+</html>

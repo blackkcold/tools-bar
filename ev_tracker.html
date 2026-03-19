@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>电车电费 / 度数 / 公里数统计助手</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="form-theme.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #111827; }
+    header { background: #1f2937; color: #fff; padding: 16px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 20px; }
+    header small { opacity: 0.75; font-size: 12px; }
+    main { max-width: 1100px; margin: 16px auto 32px; padding: 0 16px; }
+    .card { background: #ffffff; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+    h2 { font-size: 18px; margin: 0 0 8px; }
+    .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    label { font-size: 13px; color: #374151; display: block; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; background: #f9fafb; }
+    input:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3); background: #ffffff; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    button { border: none; border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: transform 0.05s ease, box-shadow 0.05s ease, background 0.2s; white-space: nowrap; }
+    button.primary { background: #4f46e5; color: #fff; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35); }
+    button.primary:hover { background: #4338ca; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79, 70, 229, 0.45); }
+    button.secondary { background: #e5e7eb; color: #111827; }
+    button.secondary:hover { background: #d1d5db; }
+    button.danger { background: #ef4444; color: #fff; }
+    button.danger:hover { background: #dc2626; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 8px; }
+    .chip { background: #f3f4f6; border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+    .chip-title { color: #6b7280; margin-bottom: 2px; }
+    .chip-value { font-weight: 600; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; white-space: nowrap; }
+    th { background: #f9fafb; font-weight: 600; color: #4b5563; position: sticky; top: 0; z-index: 1; }
+    th:first-child, td:first-child { text-align: left; }
+    .table-wrapper { max-height: 320px; overflow: auto; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 8px; }
+    .tag { padding: 2px 8px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: 11px; }
+    .tag.manual { background:#e0f2fe; color:#0369a1; }
+    .tag.nio { background:#ecfdf3; color:#15803d; }
+    .tag.charge { background:#fef3c7; color:#92400e; }
+    .tag.swap { background:#e0f2fe; color:#0369a1; }
+    .small-hint { font-size: 11px; color: #6b7280; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>电车用电 & 费用统计助手</h1>
+    <small>多车管理 · 优惠券记录 · 按月统计 · 按充电类型统计</small>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <h2>车辆选择</h2>
+    <div class="grid">
+      <div>
+        <label for="carSelect">当前车辆</label>
+        <select id="carSelect"></select>
+      </div>
+      <div>
+        <label for="batteryKwhInput">电池容量 (kWh)</label>
+        <input id="batteryKwhInput" placeholder="例如：75">
+      </div>
+      <div>
+        <label for="newCarName">新增车辆名称</label>
+        <input id="newCarName" placeholder="例如：ES6">
+        <div class="btn-row" style="margin-top:6px;">
+          <button class="secondary" id="addCarBtn">+ 添加车辆</button>
+          <button class="danger" id="deleteCarBtn">删除</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>总览统计</h2>
+    <div id="stats" class="stats-grid"></div>
+  </section>
+
+  <section class="card">
+    <h2>按充电类型统计</h2>
+    <div id="typeStats" class="stats-grid"></div>
+  </section>
+
+  <section class="card">
+    <h2>手动录入记录</h2>
+    <div class="grid">
+      <div>
+        <label for="recordKindInput">记录类型</label>
+        <select id="recordKindInput">
+          <option value="energy">补能记录</option>
+          <option value="coupon">优惠券购买</option>
+        </select>
+      </div>
+      <div><label>日期</label><input type="date" id="dateInput"></div>
+      <div><label>当前总里程 (km)</label><input type="number" id="odoInput"></div>
+      <div><label>本次电量 (kWh)</label><input type="number" id="kwhInput"></div>
+      <div><label>本次费用 (¥)</label><input type="number" id="costInput"></div>
+      <div><label>类型</label><select id="chargeTypeInput"><option value="swap">换电</option><option value="charge">充电</option></select></div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="addRecordBtn">+ 添加记录</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>记录列表</h2>
+    <div class="btn-row">
+      <button class="secondary" id="exportBtn">导出 Excel</button>
+      <button class="danger" id="clearAllBtn">清空当前车辆记录</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>日期</th><th>里程</th><th>电量</th><th>费用</th><th>类型</th><th>操作</th></tr>
+        </thead>
+        <tbody id="recordsTbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+  const STORAGE_KEY_RECORDS = 'evTrackerRecords_v3';
+  const STORAGE_KEY_CARS = 'evTrackerCars_v2';
+  const STORAGE_KEY_CURRENT_CAR = 'evTrackerCurrentCar_v1';
+  const DEFAULT_CAR_ID = 'car_default';
+
+  function normalizeCar(c) { return { id: c.id, name: c.name, batteryKwh: c.batteryKwh || null }; }
+  function loadCars() {
+    try {
+      const txt = localStorage.getItem(STORAGE_KEY_CARS);
+      if (txt) { const arr = JSON.parse(txt); if (Array.isArray(arr) && arr.length) return arr.map(normalizeCar); }
+    } catch(e){}
+    const defaultCars = [{ id: DEFAULT_CAR_ID, name: '默认车辆', batteryKwh: null }];
+    localStorage.setItem(STORAGE_KEY_CARS, JSON.stringify(defaultCars));
+    return defaultCars;
+  }
+  function saveCars(cars) { localStorage.setItem(STORAGE_KEY_CARS, JSON.stringify(cars)); }
+  function getCurrentCarId() {
+    const cars = loadCars(); if (!cars.length) return null;
+    const saved = localStorage.getItem(STORAGE_KEY_CURRENT_CAR);
+    const exists = cars.find(c => c.id === saved); return exists ? exists.id : cars[0].id;
+  }
+  function setCurrentCarId(id) { localStorage.setItem(STORAGE_KEY_CURRENT_CAR, id); }
+
+  function loadRecordsRaw() {
+    try { const txt = localStorage.getItem(STORAGE_KEY_RECORDS); return txt ? JSON.parse(txt) : []; } catch(e){ return []; }
+  }
+  function loadRecords() {
+    return loadRecordsRaw().map(r => ({
+      id: r.id || ('r_' + Math.random()), carId: r.carId || DEFAULT_CAR_ID, date: r.date || '',
+      odometer: r.odometer ? Number(r.odometer) : null, kwh: Number(r.kwh || 0), cost: Number(r.cost || 0),
+      chargeType: r.chargeType, kind: r.kind
+    }));
+  }
+  function saveRecords(records) { localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records)); }
+
+  function renderCars() {
+    const cars = loadCars(); const select = document.getElementById('carSelect');
+    const batteryInput = document.getElementById('batteryKwhInput');
+    select.innerHTML = ''; const currentId = getCurrentCarId();
+    cars.forEach(car => { const opt = document.createElement('option'); opt.value = car.id; opt.textContent = car.name; if (car.id === currentId) opt.selected = true; select.appendChild(opt); });
+    const car = cars.find(c => c.id === currentId);
+    batteryInput.value = car && car.batteryKwh ? car.batteryKwh : '';
+  }
+
+  function getRecordsForCurrentCar() { const carId = getCurrentCarId(); return loadRecords().filter(r => r.carId === carId); }
+
+  function renderStats() {
+    const container = document.getElementById('stats');
+    const allRecords = getRecordsForCurrentCar();
+    if (!allRecords.length) { container.innerHTML = `<div class="chip"><div class="chip-title">提示</div><div class="chip-value">暂无记录。</div></div>`; return; }
+
+    const energyRecords = allRecords.filter(r => r.kind !== 'coupon' && r.odometer != null);
+    const couponCost = allRecords.filter(r => r.kind === 'coupon').reduce((s, r) => s + (r.cost || 0), 0);
+
+    if (!energyRecords.length) { container.innerHTML = `<div class="chip"><div class="chip-value">暂无补能记录。</div></div>`; return; }
+
+    const sorted = [...energyRecords].sort((a, b) => a.odometer - b.odometer);
+    const minOdo = sorted[0].odometer; const maxOdo = sorted[sorted.length - 1].odometer;
+    const totalKm = Math.max(0, maxOdo - minOdo);
+    const energyKwh = energyRecords.reduce((s, r) => s + (r.kwh || 0), 0);
+    const totalCost = energyRecords.reduce((s, r) => s + (r.cost || 0), 0) + couponCost;
+    const costPerKm = totalKm > 0 ? totalCost / totalKm : 0;
+    const kwhPer100Km = totalKm > 0 ? (energyKwh / totalKm) * 100 : 0;
+
+    container.innerHTML = `
+      <div class="chip"><div class="chip-title">总里程</div><div class="chip-value">${totalKm.toFixed(1)} km</div></div>
+      <div class="chip"><div class="chip-title">总用电量</div><div class="chip-value">${energyKwh.toFixed(2)} kWh</div></div>
+      <div class="chip"><div class="chip-title">总费用</div><div class="chip-value">¥ ${totalCost.toFixed(2)}</div></div>
+      <div class="chip"><div class="chip-title">每公里电费</div><div class="chip-value">¥ ${costPerKm.toFixed(3)} / km</div></div>
+      <div class="chip"><div class="chip-title">平均电耗</div><div class="chip-value">${kwhPer100Km.toFixed(2)} kWh / 100 km</div></div>
+    `;
+  }
+
+  function renderTypeStats() {
+    const container = document.getElementById('typeStats');
+    const allRecords = getRecordsForCurrentCar();
+    if (!allRecords.length) return;
+    const sumByType = type => {
+      const f = allRecords.filter(r => r.chargeType === type);
+      return { kwh: f.filter(r => r.kind!=='coupon').reduce((s,r)=>s+r.kwh,0), cost: f.reduce((s,r)=>s+r.cost,0) };
+    };
+    const c = sumByType('charge'); const s = sumByType('swap');
+    container.innerHTML = `
+      <div class="chip"><div class="chip-title">充电</div><div class="chip-value">${c.kwh.toFixed(2)} kWh · ¥ ${c.cost.toFixed(2)}</div></div>
+      <div class="chip"><div class="chip-title">换电</div><div class="chip-value">${s.kwh.toFixed(2)} kWh · ¥ ${s.cost.toFixed(2)}</div></div>
+    `;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('recordsTbody');
+    const records = getRecordsForCurrentCar();
+    if (!records.length) { tbody.innerHTML = `<tr><td colspan="6">暂无记录</td></tr>`; return; }
+    const sorted = [...records].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    tbody.innerHTML = sorted.map(r => `
+      <tr>
+        <td>${r.date||''}</td><td>${r.odometer||''}</td><td>${r.kind!=='coupon'?r.kwh:''}</td><td>${r.cost.toFixed(2)}</td>
+        <td>${r.chargeType==='swap'?'换电':'充电'}</td>
+        <td><button class="danger" onclick="deleteRecord('${r.id}')">删除</button></td>
+      </tr>
+    `).join('');
+  }
+
+  window.deleteRecord = function(id) {
+    saveRecords(loadRecords().filter(r => r.id !== id));
+    renderAll();
+  }
+
+  function renderAll() { renderCars(); renderStats(); renderTypeStats(); renderTable(); }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('dateInput').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('carSelect').addEventListener('change', (e) => { setCurrentCarId(e.target.value); renderAll(); });
+    document.getElementById('batteryKwhInput').addEventListener('change', () => {
+      const val = parseFloat(document.getElementById('batteryKwhInput').value);
+      const cars = loadCars(); const id = getCurrentCarId();
+      const idx = cars.findIndex(c => c.id === id);
+      if (idx >= 0) { cars[idx].batteryKwh = Number.isFinite(val) ? val : null; saveCars(cars); renderAll(); }
+    });
+    document.getElementById('addCarBtn').addEventListener('click', () => {
+      const name = document.getElementById('newCarName').value.trim();
+      if(name) { const cars=loadCars(); const id='c_'+Date.now(); cars.push({id,name,batteryKwh:null}); saveCars(cars); setCurrentCarId(id); document.getElementById('newCarName').value=''; renderAll(); }
+    });
+    document.getElementById('addRecordBtn').addEventListener('click', () => {
+      const kind = document.getElementById('recordKindInput').value;
+      const date = document.getElementById('dateInput').value;
+      const odo = parseFloat(document.getElementById('odoInput').value);
+      const kwh = parseFloat(document.getElementById('kwhInput').value);
+      const cost = parseFloat(document.getElementById('costInput').value) || 0;
+      const chargeType = document.getElementById('chargeTypeInput').value;
+      const records = loadRecords();
+      records.push({ id:'r_'+Date.now(), carId:getCurrentCarId(), date, odometer: kind==='energy'?odo:null, kwh: kind==='energy'?kwh:0, cost, chargeType, kind });
+      saveRecords(records); renderAll();
+    });
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      if(confirm('清空当前车辆?')) { saveRecords(loadRecords().filter(r => r.carId !== getCurrentCarId())); renderAll(); }
+    });
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const d = getRecordsForCurrentCar(); if(!d.length)return;
+      const ws = XLSX.utils.json_to_sheet(d); const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Records'); XLSX.writeFile(wb, 'ev_records.xlsx');
+    });
+    renderAll();
+  });
+</script>
+</body>
+</html>

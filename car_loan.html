@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全能购车计算器 (新能源/油车/对比/提前还款)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="form-theme.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --green: #059669; /* 新能源绿 */
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+            --highlight: #ef4444; /* 亏损红 */
+            --warning: #d97706;
+            --success: #059669; /* 划算绿 */
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 24px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        h2 { margin-top: 0; border-bottom: 2px solid var(--bg); padding-bottom: 10px; font-size: 1.2rem; color: #334155; }
+        h3 { margin: 20px 0 10px; font-size: 0.95rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .vehicle-type-switch { display: flex; gap: 10px; margin-bottom: 20px; }
+        .v-type-opt { flex: 1; text-align: center; padding: 12px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s; opacity: 0.7; }
+        .v-type-opt:hover { opacity: 1; }
+        #lbl-fuel.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); opacity: 1; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+        #lbl-nev.active { border-color: var(--green); background: #ecfdf5; color: var(--green); opacity: 1; box-shadow: 0 0 0 2px rgba(5,150,105,0.2); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.85rem; color: #475569; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
+        input:focus { outline: none; border-color: var(--primary); }
+        .unit { position: absolute; right: 10px; color: #94a3b8; font-size: 0.85rem; pointer-events: none; }
+        .result-box { background: #f1f5f9; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px;}
+        .big-num { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; margin-bottom: 5px;}
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+        .detail-row.total { font-weight: bold; border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; font-size: 1rem; }
+        .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; background: var(--primary); color: white; margin-top: 15px; }
+        .btn:hover { opacity: 0.9; }
+        .comp-diff { display: flex; justify-content: space-between; font-weight: bold; padding: 5px 0; font-size: 0.95rem; }
+        .comp-diff .label { font-size: 0.8rem; color: #64748b; font-weight: normal; }
+        .comp-win { color: var(--success); }
+        .comp-lose { color: var(--highlight); }
+        .comp-msg { background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="column">
+        <div class="card">
+            <h2>1. 车型与价格</h2>
+            <div style="display:none;">
+                <input type="radio" name="vType" id="vt-fuel" value="fuel" checked onchange="handleTypeChange()">
+                <input type="radio" name="vType" id="vt-nev" value="nev" onchange="handleTypeChange()">
+            </div>
+            
+            <div class="vehicle-type-switch">
+                <label for="vt-fuel" class="v-type-opt active" id="lbl-fuel">⛽ 燃油车</label>
+                <label for="vt-nev" class="v-type-opt" id="lbl-nev">⚡ 新能源 (免/减税)</label>
+            </div>
+
+            <div class="form-group">
+                <label>裸车成交价 (当前方案)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="carPrice" value="200000" oninput="autoCalcItems(); calcAll()">
+                    <span class="unit">元</span>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group"><label>首付比例</label><div class="input-wrapper"><input type="number" id="dpPercent" value="30" oninput="updateDpAmount(); calcAll()"><span class="unit">%</span></div></div>
+                <div class="form-group"><label>首付金额</label><div class="input-wrapper"><input type="number" id="downPayment" value="60000" oninput="updateDpPercent(); calcAll()"><span class="unit">元</span></div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. 落地必要花费</h2>
+            
+            <div class="detail-row" style="border-bottom:none; align-items:center;">
+                <label style="width:100px;">购置税</label>
+                <input type="number" id="taxCost" value="0" oninput="calcAll()" style="flex:1;">
+                <span class="unit" style="position:static; margin-left:10px;">元</span>
+            </div>
+            <div id="taxTip" style="font-size:0.75rem; color:var(--warning); margin:-5px 0 10px 10px; display:none;"></div>
+
+            <div class="detail-row" style="border-bottom:none; align-items:center;">
+                <label style="width:100px;">商业+交强险</label>
+                <input type="number" id="insCost" value="6500" oninput="calcAll()" style="flex:1;">
+                <span class="unit" style="position:static; margin-left:10px;">元</span>
+            </div>
+
+            <div class="detail-row" style="border-bottom:none; align-items:center;">
+                <label style="width:100px;">上牌/指标费</label>
+                <input type="number" id="plateCost" value="500" oninput="calcAll()" style="flex:1;">
+                <span class="unit" style="position:static; margin-left:10px;">元</span>
+            </div>
+
+             <div class="detail-row" style="border-bottom:none; align-items:center;">
+                <label style="width:100px;">服务费/杂费</label>
+                <input type="number" id="otherCost" value="1000" oninput="calcAll()" style="flex:1;">
+                <span class="unit" style="position:static; margin-left:10px;">元</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>3. 贷款方案与对比</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>期数</label>
+                    <select id="months" onchange="calcAll()">
+                        <option value="12">12期 (1年)</option>
+                        <option value="24">24期 (2年)</option>
+                        <option value="36" selected>36期 (3年)</option>
+                        <option value="48">48期 (4年)</option>
+                        <option value="60">60期 (5年)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>当前方案计息</label>
+                    <div class="toggle-group" style="display:flex;gap:10px;">
+                        <input type="radio" name="rateType" id="typeApr" value="apr" checked onchange="calcAll()">
+                        <label for="typeApr">银行年化</label>
+                        <input type="radio" name="rateType" id="typeFee" value="fee" onchange="calcAll()">
+                        <label for="typeFee">分期费率</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label id="rateLabel">当前方案利率 (%)</label>
+                <div class="input-wrapper">
+                    <input type="number" id="rateValue" value="4.5" step="0.01" oninput="calcAll()">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+            
+            <details style="margin-top:15px; border-top:1px dashed var(--border); padding-top:10px;">
+                <summary style="cursor:pointer; font-size:0.9rem; font-weight:600; color:var(--primary)">💰 厂家免息/低息方案对比 (点击展开)</summary>
+                <div class="form-grid" style="margin-top:10px;">
+                    <div class="form-group">
+                        <label>免息方案利率</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="compRate" value="0" oninput="calcAll()">
+                            <span class="unit">%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>免息方案手续费 (固定金额)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="compFee" value="0" oninput="calcAll()">
+                            <span class="unit">元</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>免息方案车价差额 (比当前贵多少)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="compPriceDiff" value="0" oninput="calcAll()">
+                            <span class="unit">元</span>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            
+            <details style="margin-top:15px; border-top:1px dashed var(--border); padding-top:10px;">
+                <summary style="cursor:pointer; font-size:0.9rem; font-weight:600; color:var(--primary)">👇 提前还款计算 (点击展开)</summary>
+                <div class="form-grid" style="margin-top:10px;">
+                    <div class="form-group">
+                        <label>第几个月还清?</label>
+                        <input type="number" id="earlyMonth" value="24" oninput="calcAll()">
+                    </div>
+                    <div class="form-group">
+                        <label>违约金比例(%)</label>
+                        <input type="number" id="penaltyRate" value="3" oninput="calcAll()">
+                    </div>
+                </div>
+                <div id="earlyResult" style="font-size:0.85rem; padding:10px; background:#f1f5f9; border-radius:4px;"></div>
+            </details>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="card result-box-wrapper">
+            <h2>📊 费用分析报告</h2>
+            
+            <div class="result-box">
+                <div style="font-size:0.9rem; color:#64748b">当前方案月供</div>
+                <div class="big-num" id="resMonthly">0</div>
+                <div style="font-size:0.8rem; margin-top:5px;" id="resRealRate"></div>
+            </div>
+
+            <div style="margin:20px 0;">
+                <div style="display:flex; height:10px; border-radius:5px; overflow:hidden;">
+                    <div id="barUpfront" style="background:#94a3b8; width:30%"></div>
+                    <div id="barLoan" style="background:var(--primary); width:50%"></div>
+                    <div id="barInt" style="background:var(--highlight); width:20%"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748b; margin-top:5px;">
+                    <span>首付+落地费</span>
+                    <span>贷款本金</span>
+                    <span>总利息</span>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom:5px;">⭐ 免息方案对比</h3>
+            <div id="compResult" class="comp-msg">请填写免息方案参数以启用对比。</div>
+            <div class="comp-diff" style="margin-top:10px;">
+                <span class="label">免息方案预估月供</span>
+                <span id="compMonthly">--</span>
+            </div>
+
+            <h3 style="margin-top:20px;">💵 费用明细 (当前方案)</h3>
+            <div class="detail-row"><span>裸车价格</span><span id="r_car">0</span></div>
+            <div class="detail-row"><span>+ 购置税 (油/新)</span><span id="r_tax">0</span></div>
+            <div class="detail-row"><span>+ 保险/牌照/杂费</span><span id="r_fees">0</span></div>
+            <div class="detail-row"><span>+ 贷款总利息</span><span id="r_int" style="color:var(--highlight); font-weight:bold">0</span></div>
+            
+            <div class="detail-row total">
+                <span>🚘 落地总成本 (含息)</span>
+                <span id="r_total" style="font-size:1.2rem; color:var(--primary)">0</span>
+            </div>
+            <div class="detail-row" style="border:none; color:#64748b; font-size:0.85rem;">
+                <span>(提车当天需付总额)</span>
+                <span id="r_upfront">0</span>
+            </div>
+
+            <button class="btn" onclick="exportExcel()">📥 导出 Excel 报表</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const fmt = (n) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 }).format(n);
+    const fmt2 = (n) => n.toFixed(2);
+    let globalSchedule = [];
+    let exportData = {};
+
+    function PMT(rate, nper, pv) {
+        if (rate === 0) return -(pv / nper);
+        return -(pv * rate * Math.pow(1 + rate, nper)) / (Math.pow(1 + rate, nper) - 1);
+    }
+
+    function calculateIRR(periods, payment, presentValue) {
+        let low = 0, high = 1;
+        for (let i = 0; i < 100; i++) {
+            let mid = (low + high) / 2;
+            let r = mid;
+            let npv = payment * ((1 - Math.pow(1 + r, -periods)) / r) - presentValue;
+            if (Math.abs(npv) < 0.00001) return r;
+            if (npv > 0) low = mid; else high = mid;
+        }
+        return (low + high) / 2;
+    }
+
+    function handleTypeChange() {
+        const isNev = document.getElementById('vt-nev').checked;
+        document.getElementById('lbl-fuel').classList.toggle('active', !isNev);
+        document.getElementById('lbl-nev').classList.toggle('active', isNev);
+        autoCalcItems();
+        calcAll();
+    }
+
+    function autoCalcItems() {
+        const price = parseFloat(document.getElementById('carPrice').value) || 0;
+        const isNev = document.getElementById('vt-nev').checked;
+        let tax = 0;
+        const rawTax = price / 1.13 * 0.10; 
+        if (isNev) {
+            const exemptionLimit = 30000;
+            if (rawTax <= exemptionLimit) tax = 0; else tax = rawTax - exemptionLimit;
+            document.getElementById('taxTip').style.display = "block";
+            document.getElementById('taxTip').innerText = tax > 0 ? `* 新能源已减免${fmt(exemptionLimit)}元，需补缴剩余部分。` : `* 新能源完全免税 (符合3万元额度)。`;
+        } else {
+            tax = rawTax;
+            document.getElementById('taxTip').style.display = "none";
+        }
+        document.getElementById('taxCost').value = Math.round(tax);
+        const ins = 950 + 2000 + (price * 0.015);
+        document.getElementById('insCost').value = Math.round(ins);
+        updateDpAmount();
+    }
+
+    function updateDpAmount() {
+        const price = parseFloat(document.getElementById('carPrice').value) || 0;
+        const pct = parseFloat(document.getElementById('dpPercent').value) || 0;
+        document.getElementById('downPayment').value = Math.round(price * (pct/100));
+    }
+
+    function updateDpPercent() {
+        const price = parseFloat(document.getElementById('carPrice').value) || 0;
+        const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+        if(price > 0) document.getElementById('dpPercent').value = ((dp/price)*100).toFixed(1);
+    }
+    
+    function calcLoan(principal, rateVal, months, rateType) {
+        let monthlyPay = 0; let totalInterest = 0; let realApr = 0; let schedule = [];
+        if (rateType === 'apr') {
+            let r = (rateVal / 100) / 12;
+            realApr = rateVal;
+            if (r === 0) monthlyPay = principal / months; else monthlyPay = Math.abs(PMT(r, months, principal));
+            totalInterest = (monthlyPay * months) - principal;
+            if (rateType !== 'comp') { 
+                let bal = principal;
+                for(let i=1; i<=months; i++) {
+                    let intPart = bal * r; let prinPart = monthlyPay - intPart; bal -= prinPart;
+                    schedule.push({m:i, pay:monthlyPay, prin:prinPart, int:intPart, bal:bal<1?0:bal});
+                }
+            }
+        } else if (rateType === 'fee') {
+            let totalFee = principal * (rateVal/100) * (months/12);
+            totalInterest = totalFee;
+            monthlyPay = (principal + totalFee) / months;
+            let r_guess = calculateIRR(months, monthlyPay, principal);
+            realApr = r_guess * 12 * 100;
+            if (rateType !== 'comp') { 
+                let bal = principal; let avgPrin = principal / months; let avgInt = totalFee / months;
+                for(let i=1; i<=months; i++) {
+                    bal -= avgPrin;
+                    schedule.push({m:i, pay:monthlyPay, prin:avgPrin, int:avgInt, bal:bal<1?0:bal});
+                }
+            }
+        }
+        return { monthlyPay, totalInterest, realApr, schedule };
+    }
+
+    function calcAll() {
+        const price = parseFloat(document.getElementById('carPrice').value) || 0;
+        const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+        const months = parseInt(document.getElementById('months').value);
+        const tax = parseFloat(document.getElementById('taxCost').value) || 0;
+        const ins = parseFloat(document.getElementById('insCost').value) || 0;
+        const plate = parseFloat(document.getElementById('plateCost').value) || 0;
+        const other = parseFloat(document.getElementById('otherCost').value) || 0;
+        const upfrontFees = tax + ins + plate + other;
+        const rateType = document.querySelector('input[name="rateType"]:checked').value;
+        const rateVal = parseFloat(document.getElementById('rateValue').value) || 0;
+        const principal = price - dp;
+        
+        const mainResult = calcLoan(principal, rateVal, months, rateType);
+        const totalLandingCost = price + upfrontFees + mainResult.totalInterest;
+        const upfrontTotal = dp + upfrontFees;
+        globalSchedule = mainResult.schedule;
+        
+        const eMonth = parseInt(document.getElementById('earlyMonth').value);
+        const pRate = parseFloat(document.getElementById('penaltyRate').value) || 0;
+        let earlyMsg = "请输入还款月份";
+        if(eMonth > 0 && eMonth < months && globalSchedule.length > 0) {
+            const snap = globalSchedule[eMonth-1];
+            const penalty = snap.bal * (pRate/100);
+            const totalEarlyPay = snap.bal + penalty;
+            const originalFuturePay = mainResult.monthlyPay * (months - eMonth);
+            const save = originalFuturePay - totalEarlyPay;
+            earlyMsg = `
+                <div style="display:flex; justify-content:space-between"><span>剩余本金:</span><b>${fmt(snap.bal)}</b></div>
+                <div style="display:flex; justify-content:space-between"><span>违约金:</span><b>${fmt(penalty)}</b></div>
+                <div style="margin-top:5px; border-top:1px solid #ddd; padding-top:5px; color:${save>0?'var(--success)':'var(--highlight)'}; font-weight:bold">
+                    ${save>0 ? '提前还款省利息: '+fmt(save) : '不划算! 多付: '+fmt(Math.abs(save))}
+                </div>
+            `;
+        }
+        document.getElementById('earlyResult').innerHTML = earlyMsg;
+
+        const compPriceDiff = parseFloat(document.getElementById('compPriceDiff').value) || 0;
+        const compRate = parseFloat(document.getElementById('compRate').value) || 0;
+        const compFee = parseFloat(document.getElementById('compFee').value) || 0;
+        let compMsg = "请填写免息方案参数以启用对比。";
+        let compMonthlyPay = "--";
+        let diffTotal = 0;
+        if (compRate > 0 || compFee > 0 || compPriceDiff > 0) {
+            const priceB = price + compPriceDiff;
+            const principalB = priceB - dp;
+            const compResult = calcLoan(principalB, compRate, months, 'apr'); 
+            const totalIntB = compResult.totalInterest;
+            const totalCostB = priceB + upfrontFees + totalIntB + compFee; 
+            compMonthlyPay = fmt(compResult.monthlyPay);
+            diffTotal = totalLandingCost - totalCostB;
+            if (Math.abs(diffTotal) < 1) compMsg = "两个方案总成本几乎一致！";
+            else if (diffTotal > 0) compMsg = `<span class="comp-win">🎉 免息方案更省钱！总成本节省 ${fmt(diffTotal)} 元</span>`;
+            else compMsg = `<span class="comp-lose">⚠️ 当前方案更划算！总成本节省 ${fmt(Math.abs(diffTotal))} 元</span>`;
+            compMsg += `<br><span style="font-size:0.8rem; color:#64748b;">免息方案总成本: ${fmt(totalCostB)} (含车价差 ${fmt(compPriceDiff)} 元)</span>`;
+        }
+        document.getElementById('compResult').innerHTML = compMsg;
+        document.getElementById('compMonthly').textContent = compMonthlyPay;
+
+        document.getElementById('resMonthly').textContent = fmt(mainResult.monthlyPay);
+        document.getElementById('resRealRate').innerHTML = rateType === 'fee' ? `<span style="color:var(--warning)">⚠️ 真实年化约 ${mainResult.realApr.toFixed(2)}%</span>` : `年化利率: ${mainResult.realApr.toFixed(2)}%`;
+        document.getElementById('r_car').textContent = fmt(price);
+        document.getElementById('r_tax').textContent = fmt(tax);
+        document.getElementById('r_fees').textContent = fmt(ins + plate + other);
+        document.getElementById('r_int').textContent = fmt(mainResult.totalInterest);
+        document.getElementById('r_total').textContent = fmt(totalLandingCost);
+        document.getElementById('r_upfront').textContent = fmt(upfrontTotal);
+
+        const maxVal = totalLandingCost;
+        document.getElementById('barUpfront').style.width = (upfrontTotal / maxVal * 100) + "%";
+        document.getElementById('barLoan').style.width = (principal / maxVal * 100) + "%";
+        document.getElementById('barInt').style.width = (mainResult.totalInterest / maxVal * 100) + "%";
+
+        exportData = { vType: document.getElementById('vt-nev').checked ? "新能源 (NEV)" : "燃油车 (ICE)", price, dp, months, rateVal, tax, plate, ins, other, mainResult, totalLandingCost, comparison: {compPriceDiff, compRate, compFee, diffTotal, compMonthlyPay} };
+    }
+
+    function exportExcel() {
+        if(!exportData.schedule) return;
+        const summary = [ ["购车金融分析报告"], ["车辆类型", exportData.vType], ["裸车价格", exportData.price], ["购置税", exportData.tax], ["上牌/指标费", exportData.plate], ["保险及杂费", exportData.ins + exportData.other], [], ["首付金额", exportData.dp], ["贷款期数", exportData.months], ["当前方案利率", exportData.rateVal + "%"], [], ["当前方案月供", exportData.mainResult.monthlyPay.toFixed(2)], ["总利息支出", exportData.mainResult.totalInterest.toFixed(2)], ["落地总花费", exportData.totalLandingCost.toFixed(2)], [], ["--- 免息方案对比 ---"], ["免息方案利率", exportData.comparison.compRate + "%"], ["免息方案车价差异", exportData.comparison.compPriceDiff], ["免息方案月供", exportData.comparison.compMonthlyPay], ["总成本差异 (负数代表当前方案划算)", exportData.comparison.diffTotal.toFixed(2)] ];
+        const headers = [["期数", "月供", "本金", "利息", "剩余本金"]];
+        const rows = exportData.schedule.map(r => [r.m, r.pay.toFixed(2), r.prin.toFixed(2), r.int.toFixed(2), r.bal.toFixed(2)]);
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.aoa_to_sheet(summary);
+        const ws2 = XLSX.utils.aoa_to_sheet(headers.concat(rows));
+        XLSX.utils.book_append_sheet(wb, ws1, "费用概览与对比");
+        XLSX.utils.book_append_sheet(wb, ws2, "还款明细");
+        XLSX.writeFile(wb, "购车预算表.xlsx");
+    }
+    window.onload = () => { handleTypeChange(); setTimeout(calcAll, 100); };
+</script>
+</body>
+</html>

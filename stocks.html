@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>股市行情预览</title>
+    <style>body { margin: 0; padding: 0; background: #fff; }</style>
+</head>
+<body>
+    <!-- TradingView Widget BEGIN -->
+    <div class="tradingview-widget-container">
+      <div class="tradingview-widget-container__widget"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/tv-widget-market-overview.js" async>
+      {
+        "colorTheme": "light",
+        "dateRange": "12M",
+        "showChart": true,
+        "locale": "zh_CN",
+        "largeChartUrl": "",
+        "isTransparent": true,
+        "showSymbolLogo": true,
+        "showFloatingTooltip": false,
+        "width": "100%",
+        "height": "600",
+        "tabs": [
+          {
+            "title": "全球指数",
+            "symbols": [
+              { "s": "INDEX:000001", "d": "上证指数" },
+              { "s": "INDEX:399001", "d": "深证成指" },
+              { "s": "FOREXCOM:SPXUSD", "d": "标普500" },
+              { "s": "FOREXCOM:NSXUSD", "d": "纳斯达克" },
+              { "s": "INDEX:NKY", "d": "日经225" }
+            ]
+          },
+          {
+            "title": "加密货币",
+            "symbols": [
+              { "s": "BINANCE:BTCUSDT", "d": "比特币 (BTC)" },
+              { "s": "BINANCE:ETHUSDT", "d": "以太坊 (ETH)" },
+              { "s": "BINANCE:SOLUSDT", "d": "索拉纳 (SOL)" }
+            ]
+          }
+        ]
+      }
+      </script>
+    </div>
+    <!-- TradingView Widget END -->
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>存款利率跟踪</title>
+    <link rel="stylesheet" href="form-theme.css">
+    <style>
+        body { padding: 20px; background: #fff; }
+        .rate-box { background: #ecfdf5; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #10b981; }
+        .rate-box p { margin: 8px 0; display: flex; justify-content: space-between; font-size: 16px; }
+        .res-box { background: #eff6ff; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
+        .res-box h2 { margin: 0; color: #2563eb; font-size: 28px; }
+    </style>
+</head>
+<body>
+    <h3 style="margin-top:0; color:#2563eb;">2025年最新银行存款利率参考</h3>
+    <div class="rate-box">
+        <div style="font-size:12px; color:#059669; margin-bottom:10px;">*基于六大国有银行挂牌基准利率</div>
+        <p><span>活期存款</span> <b>0.10%</b></p>
+        <p><span>定期整存整取 一年</span> <b>1.10%</b></p>
+        <p><span>定期整存整取 三年</span> <b>1.50%</b></p>
+        <p><span>定期整存整取 五年</span> <b>1.55%</b></p>
+    </div>
+
+    <h4>利息收益试算</h4>
+    <label>计划存款金额 (元)</label>
+    <input type="number" id="amt" value="200000" oninput="calc()">
+    
+    <label>选择存款期限</label>
+    <select id="type" onchange="calc()">
+        <option value="0.001|1">活期 (年化 0.10%)</option>
+        <option value="0.011|1">定期一年 (1.10%)</option>
+        <option value="0.015|3" selected>定期三年 (1.50%)</option>
+        <option value="0.0155|5">定期五年 (1.55%)</option>
+    </select>
+
+    <div class="res-box">
+        <div style="font-size:14px; color:#4b5563; margin-bottom:5px;">到期总利息预估</div>
+        <h2 id="res">0.00 元</h2>
+        <div style="font-size:14px; color:#6b7280; margin-top:10px;" id="res-detail"></div>
+    </div>
+
+    <script>
+        function calc() {
+            const amt = parseFloat(document.getElementById('amt').value) || 0;
+            const val = document.getElementById('type').value.split('|');
+            const rate = parseFloat(val[0]);
+            const years = parseInt(val[1]);
+            
+            const interest = amt * rate * years;
+            const total = amt + interest;
+            
+            document.getElementById('res').innerText = interest.toFixed(2) + " 元";
+            document.getElementById('res-detail').innerText = `到期本息合计: ${total.toFixed(2)} 元 (锁定 ${years} 年)`;
+        }
+        calc();
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 20px; background-color: #f4f7fa; }
+        .box { background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        input { display: block; width: 100%; margin: 10px 0; padding: 8px; }
+        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h3>房贷计算器</h3>
+    贷款总额 (元): <input type="number" id="amount">
+    年利率 (%): <input type="number" id="rate">
+    期限 (年): <input type="number" id="years">
+    <button onclick="calc()">计算每月还款</button>
+    <h4 id="result"></h4>
+</div>
+<script>
+    function calc() {
+        const P = parseFloat(document.getElementById('amount').value);
+        const r = parseFloat(document.getElementById('rate').value) / 100 / 12;
+        const n = parseFloat(document.getElementById('years').value) * 12;
+        const monthly = P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+        document.getElementById('result').innerText = "每月还款: " + monthly.toFixed(2) + " 元";
+    }
+</script>
+</body>
+</html>
