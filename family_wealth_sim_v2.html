@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭资产韧性仿真引擎 v2.0</title>
+    <link rel="stylesheet" href="style_bundle_v9.css">
+        <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+<div id="app">
+
+    <!-- 顶部工具栏 -->
+    <div class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <!-- 标题 -->
+                <div class="flex items-center gap-3">
+                    <h1 class="text-xl font-bold text-gray-800">🏠 家庭资产韧性仿真引擎</h1>
+                    <span class="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full">v2.0</span>
+                </div>
+
+                <!-- 控制区 -->
+                <div class="flex items-center gap-4 flex-wrap">
+                    <!-- 家庭类型 -->
+                    <div class="flex items-center gap-2" :title="getFieldTip('household_mode')">
+                        <span class="text-xs font-medium" :class="appConfig.meta.household_mode === 'single_income' ? 'text-indigo-600 font-bold' : 'text-gray-400'">单人收入</span>
+                        <button type="button" @click="toggleHouseholdMode()" class="relative w-12 h-6 rounded-full transition-colors duration-200" :class="appConfig.meta.household_mode === 'dual_income' ? 'bg-indigo-600' : 'bg-gray-300'">
+                            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200" :class="appConfig.meta.household_mode === 'dual_income' ? 'translate-x-6' : 'translate-x-0'"></span>
+                        </button>
+                        <span class="text-xs font-medium" :class="appConfig.meta.household_mode === 'dual_income' ? 'text-indigo-600 font-bold' : 'text-gray-400'">双收入</span>
+                    </div>
+
+                    <!-- 复杂度切换 -->
+                    <div class="flex items-center gap-2 border-l border-gray-200 pl-4" :title="getFieldTip('complexity_mode')">
+                        <span class="text-xs font-medium" :class="appConfig.meta.model_complexity_mode === 'simple' ? 'text-indigo-600 font-bold' : 'text-gray-400'">简化</span>
+                        <button type="button" @click="toggleComplexityMode()" class="relative w-12 h-6 rounded-full transition-colors duration-200" :class="appConfig.meta.model_complexity_mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200" :class="appConfig.meta.model_complexity_mode === 'advanced' ? 'translate-x-6' : 'translate-x-0'"></span>
+                        </button>
+                        <span class="text-xs font-medium" :class="appConfig.meta.model_complexity_mode === 'advanced' ? 'text-purple-600 font-bold' : 'text-gray-400'">复杂</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-500">仿真次数 / Sims:<span class="tooltip-icon" :title="getFieldTip('sims')">ⓘ</span></label>
+                        <select v-model.number="appConfig.meta.n_sims" @change="markDirty" class="text-xs border border-gray-300 rounded px-2 py-1">
+                            <option :value="500">500</option>
+                            <option :value="1000">1000</option>
+                            <option :value="2000">2000</option>
+                            <option :value="5000">5000</option>
+                        </select>
+                    </div>
+
+                    <div v-if="isDirty && !isSimulating" class="flex items-center gap-1 text-xs text-orange-500 font-medium dirty-indicator">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        参数已变更 / Params Changed
+                    </div>
+
+                    <div v-if="isSimulating" class="flex items-center gap-2">
+                        <div class="flex items-center gap-1 text-xs text-indigo-600 font-medium">
+                            <span class="animate-spin">⏳</span>
+                            {{ simProgress }}% / Calculating...
+                        </div>
+                        <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 rounded-full transition-all duration-150" :style="{ width: simProgress + '%' }"></div>
+                        </div>
+                        <button type="button" @click="cancelSimulation" class="text-xs text-red-500 hover:text-red-700 font-medium ml-1">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div v-if="simError" class="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>{{ simError }}</span>
+                        <button type="button" @click="simError = ''" class="ml-1 font-bold">✕</button>
+                    </div>
+
+                    <!-- 按钮区 -->
+                    <div class="flex items-center gap-2 border-l border-gray-200 pl-4">
+                        <button type="button" @click="runSimulation" :disabled="isSimulating" :title="getButtonTip('run')" class="btn-primary text-white text-xs px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            开始计算 / Run
+                        </button>
+                        <button type="button" @click="isDirty = true; runSimulation()" :disabled="isSimulating" :title="getButtonTip('refresh')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1 disabled:opacity-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            刷新 / Refresh
+                        </button>
+                        <button type="button" @click="resetParams" :title="getButtonTip('reset')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
+                            重置 / Reset
+                        </button>
+                        <button type="button" @click="restoreLastParams" :title="getButtonTip('restore')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                            恢复 / Restore
+                        </button>
+                        <button type="button" @click="exportConfig" :title="getButtonTip('export_cfg')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            导出配置 / Export CFG
+                        </button>
+                        <button type="button" @click="$refs.configFileInput.click()" :title="getButtonTip('import_cfg')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            导入配置 / Import CFG
+                        </button>
+                        <input ref="configFileInput" type="file" accept=".json,application/json" @change="importConfig" style="display:none">
+                        <button type="button" @click="exportResults" :title="getButtonTip('export_rs')" class="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg font-medium flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            导出结果 / Export RS
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="max-w-screen-2xl mx-auto px-4 py-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+
+            <!-- 左侧参数区 -->
+            <div class="w-full lg:w-2/5 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col flex-shrink-0 overflow-hidden" style="min-height: 600px; max-height: calc(100vh - 120px);">
+                <!-- 模块Tab导航 -->
+                <div class="border-b border-gray-200">
+                    <nav class="flex flex-wrap -mb-px">
+                        <button type="button" v-for="tab in moduleTabs" :key="tab.id" @click="activeTab = tab.id" class="px-3 py-2.5 text-xs font-medium transition-colors border-b-2" :class="activeTab === tab.id ? 'tab-active' : 'text-gray-500 hover:text-gray-700'">
+                            {{ tab.icon }} {{ tab.label }}<span class="tooltip-icon" :title="getFieldTip(tab.id + '_tab')">ⓘ</span>
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- 模块内容区 -->
+                <div class="overflow-y-auto flex-grow p-4" :class="isSimulating ? 'pointer-events-none opacity-70' : ''">
+
+                    <!-- 基础设定 -->
+                    <div v-show="activeTab === 'base'" class="space-y-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">基础设定 / Base Settings</h3>
+                            <label class="flex items-center gap-2 text-xs">
+                                <span class="text-gray-500">启用 / ON</span>
+                                <input type="checkbox" v-model="appConfig.base.enabled" class="w-4 h-4 text-indigo-600 rounded">
+                            </label>
+                        </div>
+                        <param-input label="初始流动资金 (元)" v-model="appConfig.base.start_cash" :step="10000" tip="当前拥有的现金或高流动性金融资产"></param-input>
+                        <param-input label="仿真年限" v-model="appConfig.meta.years" :step="1" :min="5" :max="50" tip="观测资产跨度"></param-input>
+                        <param-input label="长期年化通胀率" v-model="appConfig.base.inflation" :step="0.005" tip="用于折现的真实购买力"></param-input>
+                        <param-input label="基础年生活费 (元)" v-model="appConfig.base.annual_living_cost" :step="5000" tip="除房租/房贷外的年度基础开销"></param-input>
+                        <param-input label="生活费年化涨幅" v-model="appConfig.base.living_cost_growth" :step="0.005" tip="生活成本增速"></param-input>
+                        <param-input label="家庭流动性枯竭线" v-model="appConfig.base.min_cash_buffer" :step="10000" tip="现金流跌破此值即判定破产"></param-input>
+                    </div>
+
+                    <!-- 收入与税务 -->
+                    <div v-show="activeTab === 'income_tax'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">收入与税务 / Income Tax</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('income_tax_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="incomeTaxModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="incomeTaxModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+
+                        <div v-if="incomeTaxModule.mode === 'simple'" class="space-y-3">
+                            <param-input label="本人月薪 (税后元)" v-model="appConfig.income_tax_module.params.main_monthly_salary" :step="1000" tip="每月固定到手的净薪资"></param-input>
+                            <param-input label="本人年终奖 (税后元)" v-model="appConfig.income_tax_module.params.main_annual_bonus" :step="5000" tip="年底一次性发放的奖金"></param-input>
+                            <param-input label="本人薪资年增长" v-model="appConfig.income_tax_module.params.main_salary_growth" :step="0.005" tip="本人工资每年平均增长比例"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶月薪 (税前约)" v-model="appConfig.income_tax_module.params.spouse_monthly_salary" :step="1000" tip="配偶月薪"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶年终奖 (税后)" v-model="appConfig.income_tax_module.params.spouse_annual_bonus" :step="5000" tip="配偶年终奖"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶薪资年增长 / Spouse Salary Growth" v-model="appConfig.income_tax_module.params.spouse_salary_growth" :step="0.005" tip="配偶工资年化增长率 / Spouse salary growth rate"></param-input>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <param-input label="本人月薪 (税后元)" v-model="appConfig.income_tax_module.params.main_monthly_salary" :step="1000" tip="每月固定到手的净薪资"></param-input>
+                            <param-input label="本人年终奖 (税后元)" v-model="appConfig.income_tax_module.params.main_annual_bonus" :step="5000" tip="年底一次性发放的奖金"></param-input>
+                            <param-input label="本人薪资年增长" v-model="appConfig.income_tax_module.params.main_salary_growth" :step="0.005" tip="本人工资每年平均增长比例"></param-input>
+                            <param-input label="个税年度免征额" v-model="appConfig.income_tax_module.params.personal_standard_deduction_annual" :step="6000" tip="中国综合所得年度基本减除费用，默认60000"></param-input>
+                            <param-input label="本人专项附加扣除" v-model="appConfig.income_tax_module.params.main_tax_credit_annual" :step="1200" tip="本人年度可抵扣的专项附加扣除"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶月薪 (税前约)" v-model="appConfig.income_tax_module.params.spouse_monthly_salary" :step="1000" tip="配偶月薪"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶年终奖 (税后)" v-model="appConfig.income_tax_module.params.spouse_annual_bonus" :step="5000" tip="配偶年终奖"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶薪资年增长 / Spouse Salary Growth" v-model="appConfig.income_tax_module.params.spouse_salary_growth" :step="0.005" tip="配偶工资年化增长率 / Spouse salary growth rate"></param-input>
+                            <param-input v-if="isDualIncome" label="配偶专项附加扣除" v-model="appConfig.income_tax_module.params.spouse_tax_credit_annual" :step="1200" tip="配偶年度可抵扣的专项附加扣除"></param-input>
+                            <div class="border-t pt-3 mt-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">奖金计税方式 / Bonus Tax Mode <span class="tooltip-icon" :title="getFieldTip('bonus_tax_mode')">ⓘ</span></label>
+                                <select v-model="appConfig.income_tax_module.params.bonus_tax_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="merged">合并计税 / Merged</option>
+                                <option value="separate">单独计税 / Separate</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 公积金 -->
+                    <div v-show="activeTab === 'pf'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">公积金 / PF Module</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('pf_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="pfModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="pfModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+                        <param-input label="本人月度公积金双边" v-model="appConfig.pf_module.params.main_monthly_pf" :step="500" tip="每月个人+公司缴纳的公积金"></param-input>
+                        <param-input v-if="isDualIncome" label="配偶月度公积金" v-model="appConfig.pf_module.params.spouse_monthly_pf" :step="500" tip="配偶公积金"></param-input>
+                        <div class="border-t pt-3 mt-3">
+                            <label class="text-xs font-semibold text-gray-600 mb-2 block">公积金提取方式 / PF Withdrawal <span class="tooltip-icon" :title="getFieldTip('pf_withdraw_mode')">ⓘ</span></label>
+                            <select v-model="appConfig.pf_module.params.pf_withdraw_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="mortgage">抵房贷 / Mortgage Offset</option>
+                                <option value="rent">抵房租 / Rent Offset</option>
+                                <option value="none">不提取 / None</option>
+                                <option value="custom">自定义 / Custom</option>
+                            </select>
+                        </div>
+                        <param-input v-if="pfModule.mode === 'advanced'" label="年提取上限 (元)" v-model="appConfig.pf_module.params.pf_withdraw_cap_annual" :step="5000" tip="每年可提取金额上限"></param-input>
+                        <param-input v-if="pfModule.mode === 'advanced'" label="可提取比例" v-model="appConfig.pf_module.params.pf_available_ratio" :step="0.1" tip="公积金可提取使用的比例"></param-input>
+                    </div>
+
+                    <div v-show="activeTab === 'housing'" class="space-y-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">房产与住房 / Housing</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('housing_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="housingModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="housingModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+
+                        <div class="border-b pb-3 mb-3">
+                            <label class="text-xs font-semibold text-gray-600 mb-2 block">决策模式 / Decision Mode <span class="tooltip-icon" :title="getFieldTip('decision_mode')">ⓘ</span></label>
+                            <select v-model="appConfig.housing_module.params.decision_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="compare">买房 vs 租房 / Buy vs Rent</option>
+                                <option value="buy_only">仅买房 / Buy Only</option>
+                                <option value="rent_only">仅租房 / Rent Only</option>
+                            </select>
+                        </div>
+
+                        <param-input label="目标房产市值 (元)" v-model="appConfig.housing_module.params.house_price" :step="50000" tip="房产当前市值"></param-input>
+                        <param-input label="初始贷款总额 (元)" v-model="appConfig.housing_module.params.loan_balance" :step="50000" tip="未结清的房贷总额"></param-input>
+                        <param-input label="购房一次性税费 (元)" v-model="appConfig.housing_module.params.purchase_tax_and_fees" :step="5000" tip="契税、中介费等"></param-input>
+                        <param-input label="房产年维护费率" v-model="appConfig.housing_module.params.annual_house_maintenance_ratio" :step="0.001" tip="每年物业维修等占房屋总价的比例"></param-input>
+
+                        <param-input label="租房月租预算 (元)" v-model="appConfig.housing_module.params.monthly_rent" :step="500" tip="每月租房开销"></param-input>
+                        <param-input label="租金年化涨幅" v-model="appConfig.housing_module.params.rent_growth_anchor" :step="0.005" tip="房租每年的平均上涨比例"></param-input>
+
+                        <div v-if="housingModule.mode === 'advanced'" class="space-y-3 border-t pt-3 mt-3">
+                            <div class="border-b pb-3 mb-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">城市层级 / City Tier <span class="tooltip-icon" :title="getFieldTip('city_tier')">ⓘ</span></label>
+                                <select v-model="appConfig.housing_module.params.city_tier" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="tier1_core">一线核心 / Tier1 Core</option>
+                                <option value="tier1_outer">一线外围 / Tier1 Outer</option>
+                                <option value="tier2_strong">二线强 / Tier2 Strong</option>
+                                    <option value="tier3_4">三四线</option>
+                                </select>
+                            </div>
+                            <param-input label="租售比锚定" v-model="appConfig.housing_module.params.rent_sale_ratio_anchor" :step="0.002" tip="租售比参考值"></param-input>
+                            <param-input label="政策风险因子" v-model="appConfig.housing_module.params.policy_risk_factor" :step="0.05" tip="房地产政策不确定性"></param-input>
+                            <param-input label="空置风险因子" v-model="appConfig.housing_module.params.vacancy_risk_factor" :step="0.05" tip="房屋空置/出租风险"></param-input>
+                        </div>
+
+                        <div class="space-y-3 border-t pt-3 mt-3">
+                            <h4 class="text-xs font-bold text-gray-600">房价分阶段趋势</h4>
+                            <param-input label="前5年房价年均趋势" v-model="appConfig.housing_module.params.early_house_trend" :step="0.005" tip="第1-5年：默认-1%"></param-input>
+                            <param-input label="5-10年房价恢复趋势" v-model="appConfig.housing_module.params.recovery_house_trend" :step="0.005" tip="第6-10年：默认+1%"></param-input>
+                            <param-input label="10年后房价趋势下限" v-model="appConfig.housing_module.params.mature_house_trend_low" :step="0.005" tip="第11年后下限"></param-input>
+                            <param-input label="10年后房价趋势上限" v-model="appConfig.housing_module.params.mature_house_trend_high" :step="0.005" tip="第11年后上限"></param-input>
+                            <param-input label="房价波动率" v-model="appConfig.housing_module.params.house_sigma" :step="0.01" tip="房价的标准差"></param-input>
+                            <param-input label="房价均值回归强度" v-model="appConfig.housing_module.params.house_mean_reversion" :step="0.05" tip="偏离均值后被拉回的力度"></param-input>
+                        </div>
+                    </div>
+
+                    <!-- 房贷 -->
+                    <div v-show="activeTab === 'mortgage'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">房贷模块 / Mortgage <span class="tooltip-icon" :title="getFieldTip('mortgage_linkage')">ⓘ</span></h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('mortgage_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="mortgageModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="mortgageModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+                        <param-input label="购房月供预算 (元)" v-model="appConfig.mortgage_module.params.monthly_emi" :step="500" tip="每月需还的等额本息金额"></param-input>
+                        <param-input label="房贷年利率" v-model="appConfig.mortgage_module.params.mortgage_annual_rate" :step="0.001" tip="真实房贷年利率"></param-input>
+                        <param-input label="还款年限 (年) / Loan Term" v-model="appConfig.mortgage_module.params.loan_term_years" :step="1" :min="1" :max="40" tip="与房贷总额、利率、月供、还款方式自动联动"></param-input>
+                        <param-input label="年终奖额外还贷比" v-model="appConfig.mortgage_module.params.extra_repay_bonus_ratio" :step="0.1" tip="年终奖用于提前还贷的比例"></param-input>
+                        <param-input label="还清后转投资比例" v-model="appConfig.mortgage_module.params.post_mortgage_invest_ratio" :step="0.05" tip="房贷还清后原月供转投资的比例"></param-input>
+
+                        <div v-if="mortgageModule.mode === 'advanced'" class="space-y-3 border-t pt-3 mt-3">
+                            <div class="border-b pb-3 mb-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">还款方式 / Repayment Type <span class="tooltip-icon" :title="getFieldTip('repayment_type')">ⓘ</span></label>
+                                <select v-model="appConfig.mortgage_module.params.repayment_type" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="equal_payment">等额本息 / Equal Payment</option>
+                                <option value="equal_principal">等额本金 / Equal Principal</option>
+                                </select>
+                            </div>
+                            <div class="border-b pb-3 mb-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">利率类型 / Rate Type <span class="tooltip-icon" :title="getFieldTip('rate_type')">ⓘ</span></label>
+                                <select v-model="appConfig.mortgage_module.params.rate_type" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="fixed">固定利率 / Fixed</option>
+                                <option value="floating_lpr">浮动LPR / Floating</option>
+                                </select>
+                            </div>
+                            <param-input label="重定价周期 (年)" v-model="appConfig.mortgage_module.params.repricing_cycle_years" :step="1" :min="1" tip="LPR重定价周期"></param-input>
+                            <param-input label="提前还款违约金率" v-model="appConfig.mortgage_module.params.prepay_penalty_rate" :step="0.01" tip="提前还款违约金"></param-input>
+                            <div class="border-b pb-3 mb-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">提前还款策略 / Prepay Strategy <span class="tooltip-icon" :title="getFieldTip('prepay_strategy')">ⓘ</span></label>
+                                <select v-model="appConfig.mortgage_module.params.prepay_strategy" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="reduce_term">缩期 / Reduce Term</option>
+                                <option value="reduce_payment">降供 / Reduce Payment</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 投资组合 -->
+                    <div v-show="activeTab === 'portfolio'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">投资组合 / Portfolio <span class="tooltip-icon" :title="getFieldTip('allocation_linkage')">ⓘ</span></h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('portfolio_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="portfolioModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="portfolioModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+
+                        <div v-if="portfolioModule.mode === 'simple'">
+                            <param-input label="流动资产年化收益" v-model="appConfig.portfolio_module.params.invest_mu" :step="0.005" tip="现金及金融资产的平均年回报"></param-input>
+                            <param-input label="流动资产波动率" v-model="appConfig.portfolio_module.params.invest_sigma" :step="0.01" tip="投资回报的标准差"></param-input>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <h4 class="text-xs font-bold text-gray-600">综合参数</h4>
+                            <param-input label="综合预期收益" v-model="appConfig.portfolio_module.params.invest_mu" :step="0.005" tip="多资产组合平均年回报"></param-input>
+                            <param-input label="综合波动率" v-model="appConfig.portfolio_module.params.invest_sigma" :step="0.01" tip="多资产组合标准差"></param-input>
+                            <param-input label="股/房相关性" v-model="appConfig.portfolio_module.params.correlation" :step="0.05" tip="金融资产与房产涨跌的关联度"></param-input>
+
+                            <div class="border-t pt-3 mt-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <h4 class="text-xs font-bold text-gray-600">大类资产配置（滑块）</h4>
+                                    <span class="tooltip-icon" title="前四类资产用滑块独立控制，第五项"海外"自动承接剩余比例。调整任意一项，海外比例随之联动。">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </span>
+                                </div>
+                                <div class="allocation-card">
+                                    <div class="allocation-summary">
+                                        <div class="allocation-stacked-bar">
+                                            <span class="seg seg-cash" :style="{width: allocPcts.cash + '%'}"></span>
+                                            <span class="seg seg-bond" :style="{width: allocPcts.bond + '%'}"></span>
+                                            <span class="seg seg-equity" :style="{width: allocPcts.equity + '%'}"></span>
+                                            <span class="seg seg-gold" :style="{width: allocPcts.gold + '%'}"></span>
+                                            <span class="seg seg-overseas" :style="{width: allocPcts.overseas + '%'}"></span>
+                                        </div>
+                                        <div class="allocation-total" :class="allocTotalClass">
+                                            合计 / Total: {{ allocTotalPct }}%
+                                        </div>
+                                    </div>
+
+                                    <div class="allocation-row">
+                                        <label class="allocation-label">
+                                            <span class="dot dot-cash"></span>现金 / Cash
+                                            <span class="tooltip-icon" :title="getFieldTip('cash_alloc')">ⓘ</span>
+                                        </label>
+                                        <input class="allocation-slider slider-cash" type="range" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.cash"
+                                            @pointerdown="startDrag('cash')"
+                                            @input="onDrag('cash')"
+                                            @pointerup="endDrag('cash')"
+                                            @change="commitAlloc('cash')">
+                                        <input class="allocation-number" type="number" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.cash"
+                                            @change="commitAlloc('cash')">
+                                        <span class="allocation-value">{{ sliderValues.cash }}%</span>
+                                        <button type="button" class="alloc-max-btn" @click="setMaxAlloc('cash')" title="设为 100%">MAX</button>
+                                    </div>
+
+                                    <div class="allocation-row">
+                                        <label class="allocation-label">
+                                            <span class="dot dot-bond"></span>债券 / Bond
+                                            <span class="tooltip-icon" :title="getFieldTip('bond_alloc')">ⓘ</span>
+                                        </label>
+                                        <input class="allocation-slider slider-bond" type="range" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.bond"
+                                            @pointerdown="startDrag('bond')"
+                                            @input="onDrag('bond')"
+                                            @pointerup="endDrag('bond')"
+                                            @change="commitAlloc('bond')">
+                                        <input class="allocation-number" type="number" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.bond"
+                                            @change="commitAlloc('bond')">
+                                        <span class="allocation-value">{{ sliderValues.bond }}%</span>
+                                        <button type="button" class="alloc-max-btn" @click="setMaxAlloc('bond')" title="设为 100%">MAX</button>
+                                    </div>
+
+                                    <div class="allocation-row">
+                                        <label class="allocation-label">
+                                            <span class="dot dot-equity"></span>股票 / Equity
+                                            <span class="tooltip-icon" :title="getFieldTip('equity_alloc')">ⓘ</span>
+                                        </label>
+                                        <input class="allocation-slider slider-equity" type="range" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.equity"
+                                            @pointerdown="startDrag('equity')"
+                                            @input="onDrag('equity')"
+                                            @pointerup="endDrag('equity')"
+                                            @change="commitAlloc('equity')">
+                                        <input class="allocation-number" type="number" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.equity"
+                                            @change="commitAlloc('equity')">
+                                        <span class="allocation-value">{{ sliderValues.equity }}%</span>
+                                        <button type="button" class="alloc-max-btn" @click="setMaxAlloc('equity')" title="设为 100%">MAX</button>
+                                    </div>
+
+                                    <div class="allocation-row">
+                                        <label class="allocation-label">
+                                            <span class="dot dot-gold"></span>黄金 / Gold
+                                            <span class="tooltip-icon" :title="getFieldTip('gold_alloc')">ⓘ</span>
+                                        </label>
+                                        <input class="allocation-slider slider-gold" type="range" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.gold"
+                                            @pointerdown="startDrag('gold')"
+                                            @input="onDrag('gold')"
+                                            @pointerup="endDrag('gold')"
+                                            @change="commitAlloc('gold')">
+                                        <input class="allocation-number" type="number" min="0" max="100" step="1"
+                                            v-model.number="sliderValues.gold"
+                                            @change="commitAlloc('gold')">
+                                        <span class="allocation-value">{{ sliderValues.gold }}%</span>
+                                        <button type="button" class="alloc-max-btn" @click="setMaxAlloc('gold')" title="设为 100%">MAX</button>
+                                    </div>
+
+                                    <div class="allocation-row allocation-row--readonly">
+                                        <label class="allocation-label">
+                                            <span class="dot dot-overseas"></span>海外 / Overseas
+                                            <span class="tooltip-icon" :title="getFieldTip('overseas_alloc')">ⓘ</span>
+                                        </label>
+                                        <div class="allocation-residual">自动剩余 / Auto</div>
+                                        <span class="allocation-value">{{ sliderValues.overseas }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t pt-3 mt-3">
+                                <h4 class="text-xs font-bold text-gray-600 mb-2">各类资产参数</h4>
+                                <param-input label="股票预期收益" v-model="appConfig.portfolio_module.params.equity_mu" :step="0.005" tip="股票年化收益"></param-input>
+                                <param-input label="股票波动率" v-model="appConfig.portfolio_module.params.equity_sigma" :step="0.01" tip="股票年化波动"></param-input>
+                                <param-input label="债券预期收益" v-model="appConfig.portfolio_module.params.bond_mu" :step="0.005" tip="债券年化收益"></param-input>
+                                <param-input label="债券波动率" v-model="appConfig.portfolio_module.params.bond_sigma" :step="0.01" tip="债券年化波动"></param-input>
+                            </div>
+
+                            <div class="border-t pt-3 mt-3">
+                                <label class="text-xs font-semibold text-gray-600 mb-2 block">再平衡模式 / Rebalance Mode <span class="tooltip-icon" :title="getFieldTip('rebalance_mode')">ⓘ</span></label>
+                                <select v-model="appConfig.portfolio_module.params.rebalance_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="none">不复衡 / No Rebalance</option>
+                                <option value="annual">年度再平衡 / Annual</option>
+                                <option value="threshold">阈值触发 / Threshold</option>
+                                </select>
+                                <param-input v-if="portfolioModule.params.rebalance_mode === 'threshold'" label="再平衡阈值" v-model="appConfig.portfolio_module.params.rebalance_threshold" :step="0.01" tip="偏离配置比例多少时触发"></param-input>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 危机与宏观 -->
+                    <div v-show="activeTab === 'crisis'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">危机与宏观 / Crisis</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('crisis_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="crisisModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="crisisModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+
+                        <div v-if="crisisModule.mode === 'simple'">
+                            <param-input label="大危机年发生概率" v-model="appConfig.crisis_module.params.crisis_prob" :step="0.01" tip="每年发生系统性压力事件的概率"></param-input>
+                            <param-input label="危机期金融回撤" v-model="appConfig.crisis_module.params.crisis_cash_drawdown" :step="0.05" tip="危机当年金融资产额外下跌幅度"></param-input>
+                            <param-input label="危机期房产下跌" v-model="appConfig.crisis_module.params.crisis_house_drawdown" :step="0.05" tip="危机当年房产的额外下跌幅度"></param-input>
+                            <param-input label="危机致失业月数" v-model="appConfig.crisis_module.params.unemployment_months" :step="1" :min="0" :max="12" tip="危机当年本人失去工资的月份"></param-input>
+                            <param-input label="危机期年终奖保留率" v-model="appConfig.crisis_module.params.bonus_cut_ratio_in_crisis" :step="0.05" tip="危机当年年终奖缩水后保留的比例"></param-input>
+                            <param-input label="年终奖波动率" v-model="appConfig.crisis_module.params.annual_bonus_volatility" :step="0.01" tip="年终奖每年的额外随机波动"></param-input>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <h4 class="text-xs font-bold text-gray-600">基础参数</h4>
+                            <param-input label="危机年发生概率" v-model="appConfig.crisis_module.params.crisis_prob" :step="0.01" tip="每年发生系统性压力事件的概率"></param-input>
+                            <param-input label="危机期金融回撤" v-model="appConfig.crisis_module.params.crisis_cash_drawdown" :step="0.05" tip="危机当年金融资产额外下跌幅度"></param-input>
+                            <param-input label="危机期房产下跌" v-model="appConfig.crisis_module.params.crisis_house_drawdown" :step="0.05" tip="危机当年房产的额外下跌幅度"></param-input>
+                            <param-input label="危机致失业月数" v-model="appConfig.crisis_module.params.unemployment_months" :step="1" :min="0" :max="12" tip="危机当年本人失去工资的月份"></param-input>
+                            <param-input label="危机期年终奖保留率" v-model="appConfig.crisis_module.params.bonus_cut_ratio_in_crisis" :step="0.05" tip="危机当年年终奖缩水后保留的比例"></param-input>
+                            <param-input label="年终奖波动率" v-model="appConfig.crisis_module.params.annual_bonus_volatility" :step="0.01" tip="年终奖每年的额外随机波动"></param-input>
+
+                            <div class="border-t pt-3 mt-3">
+                                <h4 class="text-xs font-bold text-gray-600 mb-2">宏观状态机</h4>
+                                <div class="border-b pb-3 mb-3">
+                                    <label class="text-xs font-semibold text-gray-600 mb-2 block">宏观状态模式 / Macro Mode <span class="tooltip-icon" :title="getFieldTip('macro_state_mode')">ⓘ</span></label>
+                                    <select v-model="appConfig.crisis_module.params.macro_state_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="independent">独立危机 / Independent</option>
+                                <option value="state_machine">宏观状态机 / State Machine</option>
+                                    </select>
+                                </div>
+                                <param-input label="收入恢复滞后期 (年)" v-model="appConfig.crisis_module.params.income_recovery_lag" :step="1" tip="危机后收入恢复需要的年数"></param-input>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="activeTab === 'life_events'" class="space-y-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">生命周期 / Life Events</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">关闭 / OFF</span>
+                                <button type="button" @click="toggleModuleMode('life_events_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="lifeEventsModule.enabled ? 'bg-indigo-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="lifeEventsModule.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">启用 / ON</span>
+                            </div>
+                        </div>
+
+                        <div v-if="lifeEventsModule.enabled" class="space-y-3">
+                            <div v-if="lifeEventsModule.mode === 'simple'" class="text-xs text-gray-500">
+                                Simple模式：固定金额事件 / Fixed amount events
+                            </div>
+                            <div v-else class="text-xs text-gray-500">
+                                Advanced模式：概率触发、通胀联动 / Probabilistic, inflation-linked
+                            </div>
+                            <div v-if="lifeEventsModule.params.events.length === 0" class="text-center py-4 text-gray-400 text-sm">
+                                暂无事件，点击下方添加 / No events, click below to add
+                            </div>
+                            <div v-for="(event, idx) in lifeEventsModule.params.events" :key="idx" class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-xs font-bold text-indigo-600">{{ event.type }}</span>
+                                    <button type="button" @click="removeLifeEvent(idx)" class="text-red-400 hover:text-red-600">✕</button>
+                                </div>
+                                <param-input label="起始年 / Start Year" v-model="event.start_year" :step="1" :min="1"></param-input>
+                                <param-input label="持续年数 / Duration" v-model="event.duration_years" :step="1" :min="1"></param-input>
+                                <param-input label="年度金额 / Annual Amt" v-model="event.amount_annual" :step="5000"></param-input>
+                                <param-input label="增长率 / Growth" v-model="event.growth_rate" :step="0.01"></param-input>
+                            </div>
+                            <button type="button" @click="addLifeEvent" class="w-full text-xs py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-500">
+                                + 添加事件 / Add Event
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-show="activeTab === 'insurance'" class="space-y-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">保险保障 / Insurance</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">关闭 / OFF</span>
+                                <button type="button" @click="toggleModuleMode('insurance_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="insuranceModule.enabled ? 'bg-indigo-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="insuranceModule.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">启用 / ON</span>
+                            </div>
+                        </div>
+
+                        <div v-if="insuranceModule.enabled" class="space-y-3">
+                            <div v-if="insuranceModule.mode === 'simple'" class="space-y-3">
+                                <param-input label="年度总保费 / Annual Premium" v-model="appConfig.insurance_module.params.annual_premium_total" :step="1000" tip="年度总保费 / Annual insurance premium"></param-input>
+                                <param-input label="危机损失抵减 / Crisis Offset" v-model="appConfig.insurance_module.params.crisis_loss_offset_ratio" :step="0.1" tip="保险可抵消危机损失的比例 / Insurance covers crisis loss"></param-input>
+                            </div>
+                            <div v-if="insuranceModule.mode === 'advanced'" class="space-y-3">
+                                <param-input label="年度总保费 / Annual Premium" v-model="appConfig.insurance_module.params.annual_premium_total" :step="1000" tip="年度总保费 / Annual insurance premium"></param-input>
+                                <param-input label="重疾险保额 / CI Cover" v-model="appConfig.insurance_module.params.critical_illness_cover" :step="50000" tip="重大疾病保险保额 / Critical illness cover"></param-input>
+                                <param-input label="医疗险报销 / Medical Ratio" v-model="appConfig.insurance_module.params.medical_cover_ratio" :step="0.1" tip="医疗费用报销比例 / Medical reimbursement"></param-input>
+                                <param-input label="定期寿险保额 / Term Life" v-model="appConfig.insurance_module.params.term_life_cover" :step="100000" tip="定期寿险保额 / Term life cover"></param-input>
+                                <param-input label="意外险保额 / Accident" v-model="appConfig.insurance_module.params.accident_cover" :step="50000" tip="意外伤害保险保额 / Accident cover"></param-input>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="activeTab === 'analysis'" class="space-y-4">
+                            <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-gray-700">分析模块 / Analysis</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500">简化 / Simple</span>
+                                <button type="button" @click="toggleModuleMode('analysis_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="analysisModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="analysisModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
+                                </button>
+                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
+                            </div>
+                        </div>
+
+                        <div class="border-b pb-3 mb-3">
+                            <label class="text-xs font-semibold text-gray-600 mb-2 block">破产判定 / Ruin Mode <span class="tooltip-icon" :title="getFieldTip('ruin_definition_mode')">ⓘ</span></label>
+                            <select v-model="appConfig.analysis_module.params.ruin_definition_mode" @change="markDirty" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5">
+                                <option value="simple">简单(cash<0) / Simple</option>
+                                <option value="layered">分层 / Layered</option>
+                            </select>
+                        </div>
+                        <param-input label="应急基金月数 / EF Months" v-model="appConfig.analysis_module.params.emergency_fund_months_threshold" :step="1" tip="6个月为建议值 / 6 months recommended"></param-input>
+                        <param-input label="还贷收入比 / DSCR" v-model="appConfig.analysis_module.params.dscr_threshold" :step="0.1" tip="还贷/收入比率 / Debt service ratio"></param-input>
+
+                        <div v-if="analysisModule.mode === 'advanced'" class="space-y-3 border-t pt-3 mt-3">
+                            <h4 class="text-xs font-bold text-gray-600">情景预设 / Scenarios</h4>
+                            <div class="space-y-2">
+                                <label v-for="scenario in availableScenarios" :key="scenario" class="flex items-center gap-2 text-xs">
+                                    <input type="checkbox" :value="scenario" v-model="appConfig.analysis_module.params.selected_scenarios" class="w-3.5 h-3.5 text-indigo-600 rounded">
+                                    <span>{{ scenarioLabels[scenario] || scenario }}</span>
+                                </label>
+                            </div>
+
+                            <div class="border-t pt-3 mt-3">
+                                <h4 class="text-xs font-bold text-gray-600 mb-2">敏感性分析 / Sensitivity</h4>
+                                <label class="flex items-center gap-2 text-xs mb-2">
+                                    <input type="checkbox" v-model="appConfig.analysis_module.params.sensitivity_enabled" class="w-3.5 h-3.5 text-indigo-600 rounded">
+                                    <span>启用敏感性 / Sensitivity <span class="tooltip-icon" :title="getFieldTip('sensitivity_enabled')">ⓘ</span></span>
+                                </label>
+                                <param-input v-if="analysisModule.params.sensitivity_enabled" label="步长" v-model="appConfig.analysis_module.params.sensitivity_step" :step="0.005" tip="参数调整步长"></param-input>
+                            </div>
+
+                            <div class="border-t pt-3 mt-3">
+                                <h4 class="text-xs font-bold text-gray-600 mb-2">目标求解 / Goal Seek</h4>
+                                <label class="flex items-center gap-2 text-xs mb-2">
+                                    <input type="checkbox" v-model="appConfig.analysis_module.params.goal_seek_enabled" class="w-3.5 h-3.5 text-indigo-600 rounded">
+                                    <span>启用目标求解 / Goal Seek <span class="tooltip-icon" :title="getFieldTip('goal_seek_enabled')">ⓘ</span></span>
+                                </label>
+                                <param-input v-if="analysisModule.params.goal_seek_enabled" label="目标净资产 (元)" v-model="appConfig.analysis_module.params.target_value" :step="100000" tip="期望达成的期末净资产"></param-input>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧结果区 -->
+            <div class="w-full lg:w-3/5 result-layout">
+
+                <!-- 核心指标卡片 -->
+                <div v-if="hasResults" class="metric-grid result-card result-card--full">
+                    <div class="metric-card bg-white rounded-xl shadow-md border border-gray-100 p-4">
+                        <div class="text-xs text-gray-500 mb-1">期末净资产中位数 / Median Final Wealth <span class="tooltip-icon" :title="tableRows[0].tip">ⓘ</span></div>
+                        <div class="text-lg font-bold text-indigo-600">{{ formatWan(simulationResults.buy_house.median_real_wan) }}</div>
+                        <div class="text-xs text-gray-400">买房方案</div>
+                    </div>
+                    <div class="metric-card bg-white rounded-xl shadow-md border border-gray-100 p-4">
+                        <div class="text-xs text-gray-500 mb-1">期末净资产P10 (悲观) / P10 Bearish <span class="tooltip-icon" :title="tableRows[2].tip">ⓘ</span></div>
+                        <div class="text-lg font-bold text-red-500">{{ formatWan(simulationResults.buy_house.p10_real_wan) }}</div>
+                        <div class="text-xs text-gray-400">悲观预期</div>
+                    </div>
+                    <div class="metric-card bg-white rounded-xl shadow-md border border-gray-100 p-4">
+                        <div class="text-xs text-gray-500 mb-1">期末净资产P90 (乐观) / P90 Bullish <span class="tooltip-icon" :title="tableRows[3].tip">ⓘ</span></div>
+                        <div class="text-lg font-bold text-green-500">{{ formatWan(simulationResults.buy_house.p90_real_wan) }}</div>
+                        <div class="text-xs text-gray-400">乐观预期</div>
+                    </div>
+                    <div class="metric-card bg-white rounded-xl shadow-md border border-gray-100 p-4">
+                        <div class="text-xs text-gray-500 mb-1">破产概率 / Ruin Prob <span class="tooltip-icon" :title="tableRows[4].tip">ⓘ</span></div>
+                        <div class="text-lg font-bold" :class="simulationResults.buy_house.ruin_probability > 0.1 ? 'text-red-500' : 'text-green-500'">{{ formatPct(simulationResults.buy_house.ruin_probability) }}</div>
+                        <div class="text-xs text-gray-400">流动性断裂 / Liquidity</div>
+                    </div>
+                    <div class="metric-card bg-white rounded-xl shadow-md border border-gray-100 p-4">
+                        <div class="text-xs text-gray-500 mb-1">平均危机命中 / Avg Crisis <span class="tooltip-icon" :title="tableRows[6].tip">ⓘ</span></div>
+                        <div class="text-lg font-bold text-orange-500">{{ simulationResults.buy_house.avg_crisis_count.toFixed(1) }}</div>
+                        <div class="text-xs text-gray-400">次</div>
+                    </div>
+                </div>
+                <div v-else-if="showLoadingResults" class="metric-grid result-card result-card--full">
+                    <div v-for="i in 5" :key="i" class="bg-gray-100 rounded-xl animate-pulse h-20"></div>
+                </div>
+
+                <!-- 主图表：买房vs租房中位数路径 -->
+                <div v-if="hasResults || showLoadingResults" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--full">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-800">🏠 Buy vs 🔑 Rent Median Path / 买房 vs 租房 中位数路径</h2>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded"></span> 买房</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded"></span> 租房</span>
+                        </div>
+                    </div>
+                    <div v-if="hasResults" class="relative h-72">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                    <div v-else class="loading-panel loading-panel--chart">
+                        <div class="loading-title">计算进行中 / Simulation running...</div>
+                        <div class="loading-subtitle">正在生成路径、汇总分位数并准备图表数据。</div>
+                        <div class="loading-bars">
+                            <span class="loading-bar"></span>
+                            <span class="loading-bar"></span>
+                            <span class="loading-bar"></span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">* 折线展示经通胀率折现到今天的"真实购买力"价值</p>
+                </div>
+
+                <!-- P10/P50/P90区间图 -->
+                <div v-if="isAdvancedMode && hasResults" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">📊 Wealth Distribution (P10/P50/P90) / 净资产区间</h2>
+                    <div class="relative h-72">
+                        <canvas id="rangeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 净资产组成饼图 -->
+                <div v-if="hasResults && assetComposition" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">🥧 Net Asset Composition / 净资产组成 ({{ appConfig.meta.years }}yr)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="flex flex-col items-center">
+                            <h3 class="text-base font-bold text-blue-700 mb-3">🏠 购房方案</h3>
+                            <div class="relative w-56 h-56">
+                                <canvas id="pieBuyChart"></canvas>
+                            </div>
+                            <div class="mt-3 text-xs space-y-1">
+                                <div class="flex justify-between"><span>💰 现金/投资</span><span class="font-semibold">{{ assetComposition.buy.cashWan }} 万</span></div>
+                                <div class="flex justify-between"><span>🏠 房产净值</span><span class="font-semibold">{{ assetComposition.buy.equityWan }} 万</span></div>
+                                <div class="flex justify-between border-t pt-1"><span class="font-medium">合计</span><span class="font-bold text-blue-700">{{ assetComposition.buy.totalWan }} 万</span></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <h3 class="text-base font-bold text-green-700 mb-3">🔑 租房方案</h3>
+                            <div class="relative w-56 h-56">
+                                <canvas id="pieRentChart"></canvas>
+                            </div>
+                            <div class="mt-3 text-xs space-y-1">
+                                <div class="flex justify-between"><span>💰 现金/投资</span><span class="font-semibold">{{ assetComposition.rent.cashWan }} 万</span></div>
+                                <div class="flex justify-between"><span>📊 累计租金支出(折现)</span><span class="font-semibold">{{ assetComposition.rent.rentCostWan }} 万</span></div>
+                                <div class="flex justify-between border-t pt-1"><span class="font-medium">净资产</span><span class="font-bold text-green-700">{{ assetComposition.rent.totalWan }} 万</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 压力测试数据表 -->
+                <div v-if="hasResults" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 overflow-x-auto result-card result-card--full">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">📋 Stress Test Table / 压力测试表 ({{ appConfig.meta.years }}yr)</h2>
+                    <table class="w-full text-left border-collapse min-w-max">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-xs rounded-t-lg">
+                                <th class="py-3 px-4 font-semibold rounded-tl-lg">核心指标</th>
+                                <th class="py-3 px-4 font-semibold text-blue-700">买房方案</th>
+                                <th class="py-3 px-4 font-semibold text-green-700">租房方案</th>
+                                <th class="py-3 px-4 font-semibold text-gray-800 rounded-tr-lg">相对差额 (租-买)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                            <tr v-for="row in tableRows" :key="row.key" class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-3 px-4 font-medium text-gray-700 flex items-center gap-1">
+                                    {{ row.label }}
+                                    <span class="tooltip-icon" :title="row.tip">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 font-semibold text-gray-800">{{ formatVal(simulationResults.buy_house[row.key], row.type) }}</td>
+                                <td class="py-3 px-4 font-semibold text-gray-800">{{ formatVal(simulationResults.rent_house[row.key], row.type) }}</td>
+                                <td class="py-3 px-4 font-bold" :class="diffColor(simulationResults.rent_house[row.key] - simulationResults.buy_house[row.key], row.reverseColor)">
+                                    <span v-if="(simulationResults.rent_house[row.key] - simulationResults.buy_house[row.key]) > 0">+</span>{{ formatVal(simulationResults.rent_house[row.key] - simulationResults.buy_house[row.key], row.type) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 情景对比图 (advanced) -->
+                <div v-if="isAdvancedMode && scenarioResults" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">🎯 Scenario Comparison / 多情景对比</h2>
+                    <div class="relative h-72">
+                        <canvas id="scenarioChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 危机分布图 (advanced) -->
+                <div v-if="isAdvancedMode && crisisDistribution" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">⚠️ Crisis Distribution / 危机分布</h2>
+                    <div class="relative h-64">
+                        <canvas id="crisisChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 多资产配置图 (advanced) -->
+                <div v-if="isAdvancedMode && portfolioAllocation" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">💼 Asset Allocation / 资产配置</h2>
+                    <div class="relative h-64">
+                        <canvas id="portfolioChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 租房vs买房累计成本对比 (advanced) -->
+                <div v-if="isAdvancedMode && costComparison" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 result-card result-card--half">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">📈 Cumulative Cost / 累计成本对比</h2>
+                    <div class="relative h-64">
+                        <canvas id="costChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-if="!hasResults && !showLoadingResults" class="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center result-card result-card--full">
+                    <div class="text-6xl mb-4">🏠</div>
+                    <h3 class="text-lg font-bold text-gray-600 mb-2">点击"开始计算" / Click "Run" to simulate</h3>
+                    <p class="text-sm text-gray-400">配置参数后点击按钮查看家庭资产韧性模拟结果</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Param Input Component Template -->
+<template id="param-input-tpl">
+    <div class="flex flex-col">
+        <label class="text-xs font-semibold text-gray-600 flex items-center mb-1">
+            {{ label }}
+            <span v-if="tip" class="tooltip-icon" :title="tip">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </span>
+        </label>
+        <input type="number" v-model.number="modelValue" :step="step" :min="min" :max="max"
+            class="border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-200 text-sm font-medium text-gray-800 shadow-sm"
+            @input="$emit('update:modelValue', $event.target.value === '' ? 0 : ($event.target.valueAsNumber || 0))">
+    </div>
+</template>
+
+<!-- External JS modules -->
+<script src="config_fixed_v9.js"></script>
+<script src="engines_fixed_v9.js"></script>
+<script src="charts_fixed_v9.js"></script>
+
+<script>
+window.addEventListener('error', function (e) {
+    console.error('[UI Runtime Error]', e.error || e.message);
+});
+window.addEventListener('unhandledrejection', function (e) {
+    console.error('[Unhandled Promise Rejection]', e.reason);
+});
+</script>
+
+<script src="app_fixed_v9.js"></script>
+</body>
+</html>

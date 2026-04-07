@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV 续航与成本计算器</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #1E88E5;
+      --primary-dark: #1565C0;
+      --secondary: #26A69A;
+      --surface: #F5F5F5;
+      --card: #FFFFFF;
+      --text-primary: #212121;
+      --text-secondary: #757575;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --error: #F44336;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+      --radius-card: 16px;
+      --radius-input: 8px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--surface);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    header p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      word-break: break-word;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius-card);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      min-width: 0;
+    }
+
+    .card-title .emoji {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .card-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border: 1px solid #E0E0E0;
+      background: var(--card);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(30, 136, 229, 0.05);
+    }
+
+    .action-btn svg {
+      flex-shrink: 0;
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-group label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-radius: var(--radius-input);
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--primary);
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-radius: var(--radius-input);
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--primary);
+    }
+
+    .input-wrapper input {
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      padding: 12px 16px;
+      border: none;
+      background: transparent;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 16px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .input-wrapper .unit {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .input-row .input-group {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .result-item {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .result-item .label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
+
+    .result-item .value {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 24px;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .result-item .unit {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .price-settings {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+      gap: 24px;
+    }
+
+    .price-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .price-card h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .price-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .price-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .price-item label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .price-item input {
+      width: 100%;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 2px solid transparent;
+      background: var(--card);
+      border-radius: var(--radius-input);
+      font-family: 'Roboto Mono', monospace;
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .price-item input:focus {
+      border-color: var(--primary);
+    }
+
+    .time-periods {
+      margin-bottom: 8px;
+    }
+
+    .time-periods h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .time-period-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      background: var(--surface);
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .period-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 4px;
+    }
+
+    .period-row {
+      display: contents;
+    }
+
+    .period-time {
+      font-size: 13px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 4px;
+      background: var(--card);
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .period-type {
+      padding: 8px 4px;
+      border: 2px solid transparent;
+      background: var(--card);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-primary);
+      text-align: center;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .period-type:focus {
+      border-color: var(--primary);
+    }
+
+    .period-price {
+      padding: 8px 8px;
+      border: 2px solid transparent;
+      background: var(--card);
+      border-radius: 6px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 13px;
+      color: var(--text-primary);
+      text-align: center;
+      outline: none;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .period-price:focus {
+      border-color: var(--primary);
+    }
+
+    .charge-time-select {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      background: transparent;
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23757575' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    .cost-display {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .cost-item {
+      background: var(--surface);
+      padding: 16px 12px;
+      border-radius: 12px;
+      text-align: center;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .cost-item .period {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      white-space: nowrap;
+    }
+
+    .cost-item .amount {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--primary);
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+
+    .cost-item .amount.secondary {
+      color: var(--secondary);
+    }
+
+    .comparison-box {
+      background: linear-gradient(135deg, #E3F2FD 0%, #E0F2F1 100%);
+      padding: 16px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .comparison-box .vs-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .comparison-box .diff {
+      font-family: 'Roboto Mono', monospace;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .comparison-box .diff.positive {
+      color: var(--success);
+    }
+
+    .comparison-box .diff.negative {
+      color: var(--error);
+    }
+
+    .plan-toggle {
+      display: flex;
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+
+    .plan-toggle button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .plan-toggle button.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .plan-toggle button:hover:not(.active) {
+      background: rgba(30, 136, 229, 0.1);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+      gap: 24px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: #E0E0E0;
+      margin: 20px 0;
+    }
+
+    .info-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #FFF8E1;
+      border-radius: 8px;
+      border-left: 3px solid var(--warning);
+    }
+
+    .highlight-value {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      
+      header h1 {
+        font-size: 22px;
+        word-break: break-word;
+      }
+      
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .cost-display {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .charts-grid {
+        grid-template-columns: 1fr;
+        min-width: 0;
+      }
+      
+      .chart-container {
+        height: 250px;
+        min-width: 0;
+      }
+      
+      .price-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .comparison-box {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .time-period-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        padding: 8px;
+      }
+      
+      .period-header {
+        font-size: 10px;
+      }
+      
+      .period-time {
+        font-size: 11px;
+        padding: 6px 2px;
+      }
+      
+      .period-type {
+        font-size: 11px;
+        padding: 6px 2px;
+      }
+      
+      .period-price {
+        font-size: 11px;
+        padding: 6px 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚗 EV 续航与成本计算器</h1>
+      <p>新能源汽车能耗与充电成本一站式计算工具</p>
+    </header>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">🚗</span>
+        <span>续航换算</span>
+      </div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label>标称续航（CLTC）</label>
+          <div class="input-wrapper">
+            <input type="number" id="nominalRange" value="500" min="0" step="1">
+            <span class="unit">km</span>
+          </div>
+        </div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="label">CLTC</div>
+          <div class="value" id="cltcRange">500</div>
+          <div class="unit">km</div>
+        </div>
+        <div class="result-item">
+          <div class="label">WLTP</div>
+          <div class="value" id="wltpRange">460</div>
+          <div class="unit">km</div>
+        </div>
+        <div class="result-item">
+          <div class="label">EPA</div>
+          <div class="value" id="epaRange">410</div>
+          <div class="unit">km</div>
+        </div>
+      </div>
+      <div class="info-text">
+        💡 CLTC（中国轻型汽车行驶工况）→ WLTP（全球统一轻型车辆测试程序）→ EPA（美国环保署测试标准），不同测试标准下续航数据存在差异。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">🔋</span>
+        <span>电池与能耗计算</span>
+      </div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label>能耗</label>
+          <div class="input-wrapper">
+            <input type="number" id="consumption" value="15" min="5" max="50" step="0.1">
+            <span class="unit">kWh/百公里</span>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>电池容量</label>
+          <div class="input-wrapper">
+            <input type="number" id="batteryCapacity" value="60" min="10" max="200" step="1">
+            <span class="unit">kWh</span>
+          </div>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>藏电比例</label>
+          <div class="input-wrapper">
+            <input type="number" id="hiddenSoc" value="5" min="0" max="20" step="0.5">
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>上锁电比例</label>
+          <div class="input-wrapper">
+            <input type="number" id="lockedSoc" value="3" min="0" max="15" step="0.5">
+            <span class="unit">%</span>
+          </div>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label>可用容量</label>
+          <div class="input-wrapper" style="background: #E3F2FD;">
+            <input type="text" id="usableCapacity" value="55.2" readonly style="color: var(--primary); font-weight: 600;">
+            <span class="unit">kWh</span>
+          </div>
+        </div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="label">CLTC 实际续航</div>
+          <div class="value" id="actualCltc">368</div>
+          <div class="unit">km</div>
+        </div>
+        <div class="result-item">
+          <div class="label">WLTP 实际续航</div>
+          <div class="value" id="actualWltp">339</div>
+          <div class="unit">km</div>
+        </div>
+        <div class="result-item">
+          <div class="label">EPA 实际续航</div>
+          <div class="value" id="actualEpa">302</div>
+          <div class="unit">km</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">⚡</span>
+        <span>电价设置</span>
+        <div class="card-actions">
+          <button class="action-btn" id="exportBtn" title="导出设置">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            <span>导出</span>
+          </button>
+          <button class="action-btn" id="importBtn" title="导入设置">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <span>导入</span>
+          </button>
+          <input type="file" id="importFile" accept=".json" style="display:none">
+        </div>
+      </div>
+      <div class="time-periods">
+        <h4>⏰ 分时电价配置</h4>
+        <p class="info-text" style="margin-bottom: 12px;">配置24小时各时段电价（共6个时段）</p>
+        <div class="time-period-grid">
+          <div class="period-header">时段</div>
+          <div class="period-header">类型</div>
+          <div class="period-header">价格 (元/kWh)</div>
+          <div class="period-row">
+            <span class="period-time">00:00-08:00</span>
+            <select class="period-type" data-period="0">
+              <option value="valley" selected>谷</option>
+              <option value="flat">平</option>
+              <option value="peak">峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="0" value="0.223" step="0.001" min="0">
+          </div>
+          <div class="period-row">
+            <span class="period-time">08:00-10:00</span>
+            <select class="period-type" data-period="1">
+              <option value="valley">谷</option>
+              <option value="flat" selected>平</option>
+              <option value="peak">峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="1" value="0.58" step="0.001" min="0">
+          </div>
+          <div class="period-row">
+            <span class="period-time">10:00-12:00</span>
+            <select class="period-type" data-period="2">
+              <option value="valley">谷</option>
+              <option value="flat">平</option>
+              <option value="peak" selected>峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="2" value="0.98" step="0.001" min="0">
+          </div>
+          <div class="period-row">
+            <span class="period-time">12:00-14:00</span>
+            <select class="period-type" data-period="3">
+              <option value="valley">谷</option>
+              <option value="flat" selected>平</option>
+              <option value="peak">峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="3" value="0.58" step="0.001" min="0">
+          </div>
+          <div class="period-row">
+            <span class="period-time">14:00-19:00</span>
+            <select class="period-type" data-period="4">
+              <option value="valley">谷</option>
+              <option value="flat">平</option>
+              <option value="peak" selected>峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="4" value="0.98" step="0.001" min="0">
+          </div>
+          <div class="period-row">
+            <span class="period-time">19:00-24:00</span>
+            <select class="period-type" data-period="5">
+              <option value="valley">谷</option>
+              <option value="flat" selected>平</option>
+              <option value="peak">峰</option>
+              <option value="sharp">尖</option>
+            </select>
+            <input type="number" class="period-price" data-period="5" value="0.58" step="0.001" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+      <div class="price-settings">
+        <div class="price-card">
+          <h4>🏠 家充桩</h4>
+          <div class="input-group">
+            <label>充电偏好时间</label>
+            <div class="input-wrapper">
+              <select id="homeChargeTime" class="charge-time-select">
+                <option value="0">00:00 (谷时)</option>
+                <option value="1">01:00 (谷时)</option>
+                <option value="2">02:00 (谷时)</option>
+                <option value="3">03:00 (谷时)</option>
+                <option value="4">04:00 (谷时)</option>
+                <option value="5">05:00 (谷时)</option>
+                <option value="6">06:00 (谷时)</option>
+                <option value="7">07:00 (谷时)</option>
+                <option value="8" selected>08:00 (平时)</option>
+                <option value="9">09:00 (平时)</option>
+                <option value="10">10:00 (峰时)</option>
+                <option value="11">11:00 (峰时)</option>
+                <option value="12">12:00 (平时)</option>
+                <option value="13">13:00 (平时)</option>
+                <option value="14">14:00 (峰时)</option>
+                <option value="15">15:00 (峰时)</option>
+                <option value="16">16:00 (峰时)</option>
+                <option value="17">17:00 (峰时)</option>
+                <option value="18">18:00 (峰时)</option>
+                <option value="19">19:00 (平时)</option>
+                <option value="20">20:00 (平时)</option>
+                <option value="21">21:00 (平时)</option>
+                <option value="22">22:00 (平时)</option>
+                <option value="23">23:00 (平时)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="price-card">
+          <h4>🏢 商业充电</h4>
+          <div class="input-group">
+            <label>充电偏好时间</label>
+            <div class="input-wrapper">
+              <select id="commChargeTime" class="charge-time-select">
+                <option value="0">00:00 (谷时)</option>
+                <option value="1">01:00 (谷时)</option>
+                <option value="2">02:00 (谷时)</option>
+                <option value="3">03:00 (谷时)</option>
+                <option value="4">04:00 (谷时)</option>
+                <option value="5">05:00 (谷时)</option>
+                <option value="6">06:00 (谷时)</option>
+                <option value="7">07:00 (谷时)</option>
+                <option value="8">08:00 (平时)</option>
+                <option value="9">09:00 (平时)</option>
+                <option value="10">10:00 (峰时)</option>
+                <option value="11">11:00 (峰时)</option>
+                <option value="12">12:00 (平时)</option>
+                <option value="13">13:00 (平时)</option>
+                <option value="14">14:00 (峰时)</option>
+                <option value="15">15:00 (峰时)</option>
+                <option value="16">16:00 (峰时)</option>
+                <option value="17">17:00 (峰时)</option>
+                <option value="18">18:00 (峰时)</option>
+                <option value="19" selected>19:00 (平时)</option>
+                <option value="20">20:00 (平时)</option>
+                <option value="21">21:00 (平时)</option>
+                <option value="22">22:00 (平时)</option>
+                <option value="23">23:00 (平时)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">💰</span>
+        <span>成本换算</span>
+      </div>
+      <div class="input-group" style="margin-bottom: 16px;">
+        <label>每日通勤里程</label>
+        <div class="input-wrapper">
+          <input type="number" id="dailyMileage" value="60" min="0" step="1">
+          <span class="unit">km/天</span>
+        </div>
+      </div>
+      <div class="plan-toggle">
+        <button class="active" data-plan="home">🏠 家充桩</button>
+        <button data-plan="comm">🏢 商业充电</button>
+      </div>
+      <div class="cost-display">
+        <div class="cost-item">
+          <div class="period">每日</div>
+          <div class="amount" id="dailyCost">¥7.74</div>
+        </div>
+        <div class="cost-item">
+          <div class="period">每周</div>
+          <div class="amount" id="weeklyCost">¥54.18</div>
+        </div>
+        <div class="cost-item">
+          <div class="period">每月</div>
+          <div class="amount" id="monthlyCost">¥232.20</div>
+        </div>
+        <div class="cost-item">
+          <div class="period">每年</div>
+          <div class="amount" id="yearlyCost">¥2,825.10</div>
+        </div>
+      </div>
+      <div class="comparison-box">
+        <span class="vs-label">对比另一种方案：</span>
+        <span class="diff positive" id="comparisonDiff">每月可节省 ¥XX</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="emoji">📈</span>
+        <span>图表分析</span>
+      </div>
+      <div class="charts-grid">
+        <div>
+          <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">续航里程 vs 能耗关系</h4>
+          <div class="chart-container">
+            <canvas id="rangeChart"></canvas>
+          </div>
+        </div>
+        <div>
+          <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">成本对比（以月为单位）</h4>
+          <div class="chart-container">
+            <canvas id="costChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 换算比例
+    const RATIOS = {
+      cltcToWltp: 0.92,
+      cltcToEpa: 0.82,
+      wltpToCltc: 1.087,
+      wltpToEpa: 0.89,
+      epaToCltc: 1.22,
+      epaToWltp: 1.12
+    };
+
+    const STORAGE_KEY = 'evCalculatorSettings';
+
+    function getAllSettings() {
+      const timePeriods = [];
+      document.querySelectorAll('.period-type').forEach((select, i) => {
+        const priceInput = document.querySelector(`.period-price[data-period="${i}"]`);
+        timePeriods.push({
+          type: select.value,
+          price: parseFloat(priceInput.value) || 0
+        });
+      });
+
+      return {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        rangeConversion: {
+          nominalRange: parseFloat(elements.nominalRange.value) || 500
+        },
+        batteryCalc: {
+          consumption: parseFloat(elements.consumption.value) || 15,
+          batteryCapacity: parseFloat(elements.batteryCapacity.value) || 60,
+          hiddenSoc: parseFloat(elements.hiddenSoc.value) || 5,
+          lockedSoc: parseFloat(elements.lockedSoc.value) || 3
+        },
+        timePeriods: timePeriods,
+        chargePreference: {
+          homeChargeTime: parseInt(elements.homeChargeTime.value) || 0,
+          commChargeTime: parseInt(elements.commChargeTime.value) || 19
+        },
+        costCalc: {
+          dailyMileage: parseFloat(elements.dailyMileage.value) || 60
+        }
+      };
+    }
+
+    function applySettings(settings) {
+      if (!settings || settings.version !== 1) {
+        alert('设置文件格式不正确或版本不兼容');
+        return false;
+      }
+
+      if (settings.rangeConversion) {
+        elements.nominalRange.value = settings.rangeConversion.nominalRange || 500;
+      }
+
+      if (settings.batteryCalc) {
+        elements.consumption.value = settings.batteryCalc.consumption || 15;
+        elements.batteryCapacity.value = settings.batteryCalc.batteryCapacity || 60;
+        elements.hiddenSoc.value = settings.batteryCalc.hiddenSoc || 5;
+        elements.lockedSoc.value = settings.batteryCalc.lockedSoc || 3;
+      }
+
+      if (settings.timePeriods && settings.timePeriods.length === 6) {
+        settings.timePeriods.forEach((period, i) => {
+          const typeSelect = document.querySelector(`.period-type[data-period="${i}"]`);
+          const priceInput = document.querySelector(`.period-price[data-period="${i}"]`);
+          if (typeSelect) typeSelect.value = period.type || 'valley';
+          if (priceInput) priceInput.value = period.price || 0;
+        });
+      }
+
+      if (settings.chargePreference) {
+        elements.homeChargeTime.value = settings.chargePreference.homeChargeTime || 0;
+        elements.commChargeTime.value = settings.chargePreference.commChargeTime || 19;
+      }
+
+      if (settings.costCalc) {
+        elements.dailyMileage.value = settings.costCalc.dailyMileage || 60;
+      }
+
+      return true;
+    }
+
+    function saveSettings() {
+      const settings = getAllSettings();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    function loadSettings() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const settings = JSON.parse(saved);
+          if (applySettings(settings)) {
+            updateChargeTimeOptions();
+            calculateRangeConversion();
+            calculateBatteryRange();
+            calculateCosts();
+            updateRangeChart();
+            updateCostChart();
+          }
+        } catch (e) {
+          console.warn('加载设置失败:', e);
+        }
+      }
+    }
+
+    function exportSettings() {
+      const settings = getAllSettings();
+      settings.timestamp = new Date().toISOString();
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ev-calculator-settings-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importSettings(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const settings = JSON.parse(e.target.result);
+          if (applySettings(settings)) {
+            saveSettings();
+            updateChargeTimeOptions();
+            calculateRangeConversion();
+            calculateBatteryRange();
+            calculateCosts();
+            updateRangeChart();
+            updateCostChart();
+            alert('设置导入成功！');
+          }
+        } catch (err) {
+          alert('导入失败：文件格式错误');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // DOM 元素
+    const elements = {
+      nominalRange: document.getElementById('nominalRange'),
+      cltcRange: document.getElementById('cltcRange'),
+      wltpRange: document.getElementById('wltpRange'),
+      epaRange: document.getElementById('epaRange'),
+      consumption: document.getElementById('consumption'),
+      batteryCapacity: document.getElementById('batteryCapacity'),
+      hiddenSoc: document.getElementById('hiddenSoc'),
+      lockedSoc: document.getElementById('lockedSoc'),
+      usableCapacity: document.getElementById('usableCapacity'),
+      actualCltc: document.getElementById('actualCltc'),
+      actualWltp: document.getElementById('actualWltp'),
+      actualEpa: document.getElementById('actualEpa'),
+      homeChargeTime: document.getElementById('homeChargeTime'),
+      commChargeTime: document.getElementById('commChargeTime'),
+      dailyMileage: document.getElementById('dailyMileage'),
+      dailyCost: document.getElementById('dailyCost'),
+      weeklyCost: document.getElementById('weeklyCost'),
+      monthlyCost: document.getElementById('monthlyCost'),
+      yearlyCost: document.getElementById('yearlyCost'),
+      comparisonDiff: document.getElementById('comparisonDiff')
+    };
+
+    let currentPlan = 'home';
+    let rangeChart, costChart;
+
+    const timePeriods = [
+      { start: 0, end: 8 },
+      { start: 8, end: 10 },
+      { start: 10, end: 12 },
+      { start: 12, end: 14 },
+      { start: 14, end: 19 },
+      { start: 19, end: 24 }
+    ];
+
+    function getTimePeriodIndex(hour) {
+      for (let i = 0; i < timePeriods.length; i++) {
+        if (hour >= timePeriods[i].start && hour < timePeriods[i].end) {
+          return i;
+        }
+      }
+      return 0;
+    }
+
+    function getPriceForHour(periodIndex) {
+      const typeSelect = document.querySelector(`.period-type[data-period="${periodIndex}"]`);
+      const priceInput = document.querySelector(`.period-price[data-period="${periodIndex}"]`);
+      return {
+        type: typeSelect ? typeSelect.value : 'valley',
+        price: parseFloat(priceInput ? priceInput.value : 0) || 0
+      };
+    }
+
+    function getHomePrice() {
+      const hour = parseInt(elements.homeChargeTime.value) || 0;
+      const periodIndex = getTimePeriodIndex(hour);
+      return getPriceForHour(periodIndex).price;
+    }
+
+    function getCommPrice() {
+      const hour = parseInt(elements.commChargeTime.value) || 0;
+      const periodIndex = getTimePeriodIndex(hour);
+      return getPriceForHour(periodIndex).price;
+    }
+
+    function getPriceTypeLabel(type) {
+      const labels = { peak: '峰', valley: '谷', flat: '平', sharp: '尖' };
+      return labels[type] || type;
+    }
+
+    // 计算续航换算
+    function calculateRangeConversion() {
+      const nominal = parseFloat(elements.nominalRange.value) || 0;
+      const cltc = nominal;
+      const wltp = Math.round(nominal * RATIOS.cltcToWltp);
+      const epa = Math.round(nominal * RATIOS.cltcToEpa);
+
+      elements.cltcRange.textContent = cltc;
+      elements.wltpRange.textContent = wltp;
+      elements.epaRange.textContent = epa;
+
+      return { cltc, wltp, epa };
+    }
+
+    // 计算电池与续航
+    function calculateBatteryRange() {
+      const capacity = parseFloat(elements.batteryCapacity.value) || 0;
+      const hidden = parseFloat(elements.hiddenSoc.value) || 0;
+      const locked = parseFloat(elements.lockedSoc.value) || 0;
+      const consumption = parseFloat(elements.consumption.value) || 0;
+
+      const usableCapacity = capacity * (1 - hidden / 100 - locked / 100);
+      elements.usableCapacity.value = usableCapacity.toFixed(1);
+
+      if (consumption > 0) {
+        const actualCltc = Math.round(usableCapacity / (consumption / 100) * RATIOS.cltcToWltp);
+        const actualWltp = Math.round(usableCapacity / (consumption / 100) * RATIOS.cltcToWltp * RATIOS.cltcToWltp);
+        const actualEpa = Math.round(usableCapacity / (consumption / 100) * RATIOS.cltcToEpa);
+
+        elements.actualCltc.textContent = actualCltc;
+        elements.actualWltp.textContent = actualWltp;
+        elements.actualEpa.textContent = actualEpa;
+
+        return { actualCltc, actualWltp, actualEpa, usableCapacity };
+      }
+      return { actualCltc: 0, actualWltp: 0, actualEpa: 0, usableCapacity };
+    }
+
+    // 计算成本
+    function calculateCosts() {
+      const dailyMileage = parseFloat(elements.dailyMileage.value) || 0;
+      const consumption = parseFloat(elements.consumption.value) || 0;
+      const homePrice = getHomePrice();
+      const commPrice = getCommPrice();
+
+      let currentPrice, altPrice;
+      if (currentPlan === 'home') {
+        currentPrice = homePrice;
+        altPrice = commPrice;
+      } else {
+        currentPrice = commPrice;
+        altPrice = homePrice;
+      }
+
+      const dailyEnergyCost = (dailyMileage / 100) * consumption * currentPrice;
+      const weeklyEnergyCost = dailyEnergyCost * 7;
+      const monthlyEnergyCost = dailyEnergyCost * 30;
+      const yearlyEnergyCost = dailyEnergyCost * 365;
+
+      elements.dailyCost.textContent = `¥${dailyEnergyCost.toFixed(2)}`;
+      elements.weeklyCost.textContent = `¥${weeklyEnergyCost.toFixed(2)}`;
+      elements.monthlyCost.textContent = `¥${monthlyEnergyCost.toFixed(2)}`;
+      elements.yearlyCost.textContent = `¥${formatNumber(yearlyEnergyCost.toFixed(2))}`;
+
+      const altMonthlyCost = (dailyMileage / 100) * consumption * altPrice * 30;
+      const monthlyDiff = monthlyEnergyCost - altMonthlyCost;
+      const absDiff = Math.abs(monthlyDiff);
+      if (monthlyDiff > 0) {
+        elements.comparisonDiff.textContent = `每月多花 ¥${absDiff.toFixed(2)}`;
+        elements.comparisonDiff.className = 'diff negative';
+      } else {
+        elements.comparisonDiff.textContent = `每月可节省 ¥${absDiff.toFixed(2)}`;
+        elements.comparisonDiff.className = 'diff positive';
+      }
+
+      return { dailyEnergyCost, weeklyEnergyCost, monthlyEnergyCost, yearlyEnergyCost };
+    }
+
+    // 格式化数字（添加千位分隔符）
+    function formatNumber(numStr) {
+      const num = parseFloat(numStr);
+      return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // 初始化图表
+    function initCharts() {
+      const rangeCtx = document.getElementById('rangeChart').getContext('2d');
+      const costCtx = document.getElementById('costChart').getContext('2d');
+
+      // 续航-能耗关系图
+      const consumptionRange = [];
+      for (let i = 8; i <= 25; i += 1) {
+        consumptionRange.push(i);
+      }
+
+      const capacity = parseFloat(elements.batteryCapacity.value) || 60;
+      const hidden = parseFloat(elements.hiddenSoc.value) || 5;
+      const locked = parseFloat(elements.lockedSoc.value) || 3;
+      const usableCapacity = capacity * (1 - hidden / 100 - locked / 100);
+
+      rangeChart = new Chart(rangeCtx, {
+        type: 'line',
+        data: {
+          labels: consumptionRange,
+          datasets: [
+            {
+              label: 'CLTC',
+              data: consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToWltp)),
+              borderColor: '#1E88E5',
+              backgroundColor: 'rgba(30, 136, 229, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'WLTP',
+              data: consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToWltp * RATIOS.cltcToWltp)),
+              borderColor: '#26A69A',
+              backgroundColor: 'rgba(38, 166, 154, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'EPA',
+              data: consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToEpa)),
+              borderColor: '#FF9800',
+              backgroundColor: 'rgba(255, 152, 0, 0.1)',
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 20 }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw} km`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: '能耗 (kWh/100km)'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: '续航里程 (km)'
+              }
+            }
+          }
+        }
+      });
+
+      // 成本对比图
+      updateCostChart();
+
+      costChart = new Chart(costCtx, {
+        type: 'bar',
+        data: {
+          labels: ['每日', '每周', '每月', '每年'],
+          datasets: [
+            {
+              label: '家充桩',
+              data: [0, 0, 0, 0],
+              backgroundColor: '#1E88E5'
+            },
+            {
+              label: '商业充电',
+              data: [0, 0, 0, 0],
+              backgroundColor: '#26A69A'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 20 }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ¥${context.raw.toFixed(2)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: '时间周期'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: '成本 (¥)'
+              },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+
+      updateCostChart();
+    }
+
+    // 更新成本图表
+    function updateCostChart() {
+      const dailyMileage = parseFloat(elements.dailyMileage.value) || 0;
+      const consumption = parseFloat(elements.consumption.value) || 0;
+
+      const homePrice = getHomePrice();
+      const commPrice = getCommPrice();
+
+      const dailyHome = (dailyMileage / 100) * consumption * homePrice;
+      const dailyComm = (dailyMileage / 100) * consumption * commPrice;
+
+      if (costChart) {
+        costChart.data.datasets[0].data = [
+          dailyHome,
+          dailyHome * 7,
+          dailyHome * 30,
+          dailyHome * 365
+        ];
+        costChart.data.datasets[1].data = [
+          dailyComm,
+          dailyComm * 7,
+          dailyComm * 30,
+          dailyComm * 365
+        ];
+        costChart.update();
+      }
+    }
+
+    // 更新续航图表
+    function updateRangeChart() {
+      const capacity = parseFloat(elements.batteryCapacity.value) || 60;
+      const hidden = parseFloat(elements.hiddenSoc.value) || 5;
+      const locked = parseFloat(elements.lockedSoc.value) || 3;
+      const usableCapacity = capacity * (1 - hidden / 100 - locked / 100);
+
+      if (rangeChart) {
+        const consumptionRange = [];
+        for (let i = 8; i <= 25; i += 1) {
+          consumptionRange.push(i);
+        }
+
+        rangeChart.data.datasets[0].data = consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToWltp));
+        rangeChart.data.datasets[1].data = consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToWltp * RATIOS.cltcToWltp));
+        rangeChart.data.datasets[2].data = consumptionRange.map(c => Math.round(usableCapacity / (c / 100) * RATIOS.cltcToEpa));
+        rangeChart.update();
+      }
+    }
+
+    // 绑定所有事件
+    function bindEvents() {
+      // 续航换算
+      elements.nominalRange.addEventListener('input', () => {
+        calculateRangeConversion();
+        calculateBatteryRange();
+        saveSettings();
+      });
+
+      // 电池与能耗
+      const batteryInputs = [elements.consumption, elements.batteryCapacity, elements.hiddenSoc, elements.lockedSoc];
+      batteryInputs.forEach(input => {
+        input.addEventListener('input', () => {
+          calculateBatteryRange();
+          calculateCosts();
+          updateRangeChart();
+          updateCostChart();
+          saveSettings();
+        });
+      });
+
+      // 分时电价设置
+      const periodTypes = document.querySelectorAll('.period-type');
+      const periodPrices = document.querySelectorAll('.period-price');
+      periodTypes.forEach(select => {
+        select.addEventListener('change', () => {
+          updateChargeTimeOptions();
+          calculateCosts();
+          updateCostChart();
+          saveSettings();
+        });
+      });
+      periodPrices.forEach(input => {
+        input.addEventListener('input', () => {
+          calculateCosts();
+          updateCostChart();
+          saveSettings();
+        });
+      });
+
+      // 充电时间偏好
+      elements.homeChargeTime.addEventListener('change', () => {
+        calculateCosts();
+        updateCostChart();
+        saveSettings();
+      });
+
+      elements.commChargeTime.addEventListener('change', () => {
+        calculateCosts();
+        updateCostChart();
+        saveSettings();
+      });
+
+      // 每日里程
+      elements.dailyMileage.addEventListener('input', () => {
+        calculateCosts();
+        updateCostChart();
+        saveSettings();
+      });
+
+      // 方案切换
+      document.querySelectorAll('.plan-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.plan-toggle button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentPlan = btn.dataset.plan;
+          calculateCosts();
+        });
+      });
+
+      // 导入导出
+      document.getElementById('exportBtn').addEventListener('click', exportSettings);
+      document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('importFile').click();
+      });
+      document.getElementById('importFile').addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          importSettings(e.target.files[0]);
+          e.target.value = '';
+        }
+      });
+    }
+
+    function updateChargeTimeOptions() {
+      const selects = document.querySelectorAll('.charge-time-select');
+      selects.forEach(select => {
+        const currentValue = select.value;
+        const options = select.querySelectorAll('option');
+        options.forEach((option, index) => {
+          const periodIndex = getTimePeriodIndex(index);
+          const priceInfo = getPriceForHour(periodIndex);
+          const typeLabel = getPriceTypeLabel(priceInfo.type);
+          option.textContent = `${String(index).padStart(2, '0')}:00 (${typeLabel}时)`;
+        });
+        select.value = currentValue;
+      });
+    }
+
+    // 初始化
+    function init() {
+      loadSettings();
+      updateChargeTimeOptions();
+      calculateRangeConversion();
+      calculateBatteryRange();
+      calculateCosts();
+      initCharts();
+      bindEvents();
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

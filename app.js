@@ -9,12 +9,13 @@ const tools = {
     calculator: { name: "高级科学计算器", icon: "calculate", htmlFile: "calc_fragment.html" },
     carLoan: { name: "全能购车计算器", icon: "directions_car", htmlFile: "car_loan.html" },
     evTracker: { name: "电车电费日志", icon: "ev_station", htmlFile: "ev_tracker.html" },
+    evEnergyCal: { name: "EV续航与成本", icon: "battery_charging_full", htmlFile: "ev_energy_cal.html" },
     mortgage: { name: "房贷组合计算", icon: "real_estate_agent", htmlFile: "mortgage_fragment.html" },
     weather: { name: "多城实时天气", icon: "cloud", htmlFile: "weather.html" },
     currency: { name: "汇率多国对比", icon: "currency_exchange", htmlFile: "currency.html" },
     deposit: { name: "2025存款利率", icon: "savings", htmlFile: "deposit.html" },
     stocks: { name: "股市行情预览", icon: "trending_up", htmlFile: "stocks.html" },
-    simulation: { name: "家庭资产仿真模型", icon: "insights", htmlFile: "asset_sim.html" }
+    familyWealth: { name: "家庭资产韧性仿真引擎 v2.0", icon: "insights", htmlFile: "family_wealth_sim_v2.html" }
 };
 
 const grid = document.getElementById('plugin-grid');
@@ -35,7 +36,12 @@ window.openTool = function(key) {
     document.getElementById('dialog-title').innerText = tool.name;
     dialog.style.display = 'flex';
     // 强制使用沙盒 iframe，绝对保证所有高阶图表、Vue、表单、API 的完美独立运行
-    featureView.innerHTML = `<iframe src="${tool.htmlFile}" style="width:100%;height:100%;border:none;border-radius:12px;flex:1;background:#fff;"></iframe>`;
+    featureView.innerHTML = `<iframe id="tool-iframe" src="${tool.htmlFile}" style="width:100%;height:100%;border:none;border-radius:12px;flex:1;background:#fff;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`;
+};
+
+window.closeTool = function() {
+    dialog.style.display = 'none';
+    featureView.innerHTML = '';
 };
 
 window.pinTool = function(e, key) {
@@ -145,19 +151,48 @@ async function getWidgetContent(key, isManualRefresh = false) {
             <button class="widget-action-btn" onclick="openTool('deposit')">进入本息复利试算</button>`;
     }
     else if (key === 'stocks') {
-        return `
-            <div class="widget-row"><span>上证指数</span><b style="color:#ef4444;">3050.12 (+1.2%)</b></div>
-            <div class="widget-row"><span>深证成指</span><b style="color:#ef4444;">9854.34 (+1.5%)</b></div>
-            <div class="widget-row"><span>纳斯达克</span><b style="color:#059669;">16200.5 (-0.5%)</b></div>
-            <div class="widget-row" style="border-bottom:none;"><span>比特币 (BTC)</span><b style="color:#ef4444;">$65,000 (+3.2%)</b></div>
-            <button class="widget-action-btn" onclick="openTool('stocks')">点击查看全局实时图表大盘</button>`;
+        return await cachedFetch('stocks', async () => {
+            let shData = ['3050.12', '0.00']; 
+            let szData = ['9854.34', '0.00'];
+            let ndxData = ['16200.5', '0.00'];
+            let btcData = ['65000.00', '0.00'];
+            
+            try {
+                const res = await fetch("http://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_us.NDX");
+                const text = await res.text();
+                const parseTencent = (txt, code) => {
+                    const match = txt.match(new RegExp(`v_s_${code.replace('.', '\\.')}=".*?~.*?~.*?~(.*?)~(.*?)~(.*?)~`));
+                    if(match) return [parseFloat(match[1]).toFixed(2), parseFloat(match[3]).toFixed(2)];
+                    return null;
+                };
+                shData = parseTencent(text, "sh000001") || shData;
+                szData = parseTencent(text, "sz399001") || szData;
+                ndxData = parseTencent(text, "us.NDX") || ndxData;
+            } catch(e) { console.warn("Tencent API failed", e); }
+
+            try {
+                const btcRes = await fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT");
+                const btcJson = await btcRes.json();
+                if(btcJson.lastPrice) btcData = [parseFloat(btcJson.lastPrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), parseFloat(btcJson.priceChangePercent).toFixed(2)];
+            } catch(e) { console.warn("Binance API failed", e); }
+
+            const colorStyle = (pct) => parseFloat(pct) > 0 ? "color:#ef4444;" : parseFloat(pct) < 0 ? "color:#059669;" : "color:#6b7280;";
+            const formatPct = (pct) => parseFloat(pct) > 0 ? `+${pct}%` : `${pct}%`;
+
+            return `
+                <div class="widget-row"><span>上证指数</span><b style="${colorStyle(shData[1])}">${shData[0]} (${formatPct(shData[1])})</b></div>
+                <div class="widget-row"><span>深证成指</span><b style="${colorStyle(szData[1])}">${szData[0]} (${formatPct(szData[1])})</b></div>
+                <div class="widget-row"><span>纳斯达克</span><b style="${colorStyle(ndxData[1])}">${ndxData[0]} (${formatPct(ndxData[1])})</b></div>
+                <div class="widget-row" style="border-bottom:none;"><span>比特币 (BTC)</span><b style="${colorStyle(btcData[1])}">$${btcData[0]} (${formatPct(btcData[1])})</b></div>
+                <button class="widget-action-btn" onclick="openTool('stocks')">点击查看全局实时图表大盘</button>`;
+        }, isManualRefresh);
     }
-    else if (key === 'simulation') {
+    else if (key === 'familyWealth') {
         return `
             <div style="text-align:center; padding:10px 0;">
                 <span class="material-icons" style="font-size:48px; color:#7c3aed; margin-bottom:10px;">insights</span>
-                <div style="font-size:13px; color:#4b5563; margin-bottom:15px; line-height:1.6;">家庭资产韧性与现金流压力测试<br>搭载 Vue3 与 1500 次蒙特卡洛引擎</div>
-                <button class="widget-action-btn" style="background:#f3e8ff;color:#6d28d9;" onclick="openTool('simulation')">启动极限压力仿真模型</button>
+                <div style="font-size:13px; color:#4b5563; margin-bottom:15px; line-height:1.6;">家庭资产韧性与现金流压力测试<br>Vue3 引擎 | 单/双收入切换 | 简化/复杂模式<br>支持配置导出导入 | 500-5000 次仿真</div>
+                <button class="widget-action-btn" style="background:#f3e8ff;color:#6d28d9;" onclick="openTool('familyWealth')">启动极限压力仿真模型</button>
             </div>`;
     }
     else if (key === 'calculator') {
@@ -184,6 +219,31 @@ async function getWidgetContent(key, isManualRefresh = false) {
                 <span class="material-icons" style="font-size:48px; color:#059669; margin-bottom:10px;">bolt</span>
                 <div style="font-size:13px; color:#4b5563; margin-bottom:15px;">记录您的每一次充电、换电与电耗分析<br>支持多车管理与 Excel 导出</div>
                 <button class="widget-action-btn" style="background:#ecfdf5;color:#059669;" onclick="openTool('evTracker')">进入车辆日志系统</button>
+            </div>`;
+    }
+    else if (key === 'evEnergyCal') {
+        return `
+            <div style="padding:5px 0;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px;">
+                    <div style="background:#eff6ff; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">CLTC 续航</div>
+                        <div style="font-size:20px; font-weight:bold; color:#1e88e5;">500 km</div>
+                    </div>
+                    <div style="background:#f0fdf4; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">百公里电耗</div>
+                        <div style="font-size:20px; font-weight:bold; color:#16a34a;">15 kWh</div>
+                    </div>
+                    <div style="background:#fef3c7; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">家充谷电成本</div>
+                        <div style="font-size:20px; font-weight:bold; color:#d97706;">¥0.43/km</div>
+                    </div>
+                    <div style="background:#fce7f3; border-radius:8px; padding:12px; text-align:center;">
+                        <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">商业快充成本</div>
+                        <div style="font-size:20px; font-weight:bold; color:#db2777;">¥0.90/km</div>
+                    </div>
+                </div>
+                <div style="font-size:12px; color:#9ca3af; text-align:center; margin-bottom:10px;">支持 CLTC/WLTP/EPA 续航换算 | 峰谷电价精算</div>
+                <button class="widget-action-btn" style="background:#eff6ff;color:#1e88e5;" onclick="openTool('evEnergyCal')">启动 EV 续航成本计算</button>
             </div>`;
     }
 }
@@ -249,13 +309,20 @@ function render() {
 document.addEventListener('DOMContentLoaded', async () => {
     // 初始化默认监控项
     if (localStorage.getItem('pinnedTools') === null) {
-        localStorage.setItem('pinnedTools', JSON.stringify(['simulation', 'weather', 'currency', 'evTracker']));
+        localStorage.setItem('pinnedTools', JSON.stringify(['familyWealth', 'weather', 'currency', 'evTracker', 'evEnergyCal']));
     }
     render();
     await renderPanels(); // 初始化面板并执行缓存加载
     
-    document.getElementById('close-btn').onclick = () => {
-        dialog.style.display = 'none';
-        featureView.innerHTML = ''; 
-    };
+    document.getElementById('close-btn').onclick = () => closeTool();
+    
+    // 点击遮罩层关闭弹窗（但不影响 iframe 内部交互）
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) closeTool();
+    });
+    
+    // ESC 键关闭弹窗
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && dialog.style.display === 'flex') closeTool();
+    });
 });

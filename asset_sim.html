@@ -22,20 +22,20 @@
             width: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: #f1f1f1; 
         }
         ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
+            background: #c1c1c1; 
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            background: #a8a8a8; 
         }
     </style>
 </head>
 <body class="bg-gray-50 p-4 font-sans text-gray-800">
 <div id="app" class="max-w-screen-2xl mx-auto flex flex-col lg:flex-row gap-6">
-
+    
     <!-- 左侧参数调节区 -->
     <div class="w-full lg:w-1/3 bg-white rounded-xl shadow-lg border border-gray-100 p-6 flex flex-col" style="max-height: 95vh;">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -57,9 +57,21 @@
                 <div class="text-sm px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full font-medium">
                     {{ cfg.n_sims }} 次仿真
                 </div>
+                <!-- 数据导出/导入 -->
+                <div class="flex items-center gap-2 border-l border-gray-200 pl-3">
+                    <button @click="exportConfig" class="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors" title="导出当前所有配置为 JSON 文件">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        导出
+                    </button>
+                    <label class="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md cursor-pointer transition-colors" title="从 JSON 文件导入配置">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        导入
+                        <input type="file" accept=".json" @change="importConfig" class="hidden">
+                    </label>
+                </div>
             </div>
         </div>
-
+        
         <div class="overflow-y-auto pr-2 flex-grow">
             <div v-for="(group, idx) in configGroups" :key="idx" class="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-100">
                 <h3 class="text-md font-bold border-b border-gray-200 pb-2 mb-3 text-indigo-700 flex items-center">
@@ -76,7 +88,7 @@
                             </span>
                         </label>
                         <div class="flex items-center">
-                            <input type="number" v-model.number="cfg[item.key]" :step="item.step"
+                            <input type="number" v-model.number="cfg[item.key]" :step="item.step" 
                                 class="w-full border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:border-indigo-500 focus:ring-indigo-200 transition-all text-sm font-medium text-gray-800 shadow-sm">
                         </div>
                     </div>
@@ -87,7 +99,7 @@
 
     <!-- 右侧结果可视化区 -->
     <div class="w-full lg:w-2/3 flex flex-col gap-6">
-
+        
         <!-- 资产曲线图表 -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
             <div class="flex justify-between items-center mb-4">
@@ -105,7 +117,7 @@
             <div class="relative h-96 w-full">
                 <canvas id="chartCanvas"></canvas>
             </div>
-            <p class="text-xs text-gray-400 mt-2 text-right">* 图线展示的是经通胀率折现到今天的"真实购买力"价值，已剔除通胀虚高。</p>
+            <p class="text-xs text-gray-400 mt-2 text-right">* 图线展示的是经通胀率折现到今天的“真实购买力”价值，已剔除通胀虚高。</p>
         </div>
 
         <!-- 净资产组成饼图 -->
@@ -161,7 +173,7 @@
                     {{ isDualIncome ? '双收入家庭' : '单人收入家庭' }}
                 </span>
             </div>
-
+            
             <div v-if="!results" class="py-12 flex justify-center text-gray-400">正在初始化模型...</div>
             <table v-else class="w-full text-left border-collapse min-w-max">
                 <thead>
@@ -772,6 +784,52 @@ createApp({
                 this.updatePieCharts();
                 this.isSimulating = false;
             }, 50);
+        },
+        exportConfig() {
+            let data = {
+                version: 'v8',
+                exportedAt: new Date().toISOString(),
+                isDualIncome: this.isDualIncome,
+                cfg: {}
+            };
+            // 只导出 cfg 中的数值型参数
+            for (let key in this.cfg) {
+                if (typeof this.cfg[key] === 'number') {
+                    data.cfg[key] = this.cfg[key];
+                }
+            }
+            let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            let url  = URL.createObjectURL(blob);
+            let a    = document.createElement('a');
+            a.href     = url;
+            a.download = 'family_wealth_config_' + new Date().toISOString().slice(0,10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        },
+        importConfig(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    let data = JSON.parse(e.target.result);
+                    if (data.cfg) {
+                        for (let key in data.cfg) {
+                            if (key in this.cfg) {
+                                this.cfg[key] = data.cfg[key];
+                            }
+                        }
+                    }
+                    if (typeof data.isDualIncome === 'boolean') {
+                        this.isDualIncome = data.isDualIncome;
+                    }
+                    this.$nextTick(() => this.debouncedRun());
+                } catch(err) {
+                    alert('文件格式错误：' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
         },
         formatNum(val, type) {
             if (val === undefined || val === null || isNaN(val)) return '-';
