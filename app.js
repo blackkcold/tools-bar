@@ -53,15 +53,35 @@ window.GlobalDataManager = {
         }
     },
 
+    
     async getWeather(forceRefresh = false) {
-        return this.fetchWithCache('weather_json', async () => {
-            const res = await fetch("https://wttr.in/Beijing?format=j1");
-            if (!res.ok) throw new Error("Weather API failed");
-            return await res.json();
+        return this.fetchWithCache('weather_multi_json', async () => {
+            const cities = ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Hong Kong', 'London', 'Budapest', 'New York'];
+            const results = {};
+            
+            // Fetch in parallel but gracefully handle failures
+            await Promise.allSettled(cities.map(async (city) => {
+                try {
+                    const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        results[city] = {
+                            temp: data.current_condition[0].temp_C,
+                            desc: data.current_condition[0].weatherDesc[0].value,
+                            humidity: data.current_condition[0].humidity,
+                            wind: data.current_condition[0].windspeedKmph
+                        };
+                    }
+                } catch(e) {
+                    console.error(`Failed to fetch weather for ${city}`);
+                }
+            }));
+            
+            if (Object.keys(results).length === 0) throw new Error("All weather APIs failed");
+            return results;
         }, forceRefresh);
     },
-
-    async getCurrency(forceRefresh = false) {
+async getCurrency(forceRefresh = false) {
         return this.fetchWithCache('currency_json', async () => {
             const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
             if (!res.ok) throw new Error("Currency API failed");
@@ -193,21 +213,48 @@ window.refreshWidget = async function(key) {
 // 各小组件直出 HTML 构建器 (不影响全屏版的 iframe)
 // ==========================================
 async function getWidgetContent(key, isManualRefresh = false) {
+    
     if (key === 'weather') {
-        return await cachedFetch('weather', async () => {
+        return await cachedFetch('weather_widget', async () => {
             const data = await window.GlobalDataManager.getWeather(isManualRefresh);
-            const temp = data.current_condition[0].temp_C;
-            const desc = data.current_condition[0].weatherDesc[0].value;
-            const humidity = data.current_condition[0].humidity;
-            const wind = data.current_condition[0].windspeedKmph;
+            
+            // Read widget preference from localStorage
+            let selectedCities = JSON.parse(localStorage.getItem('weather_widget_cities') || '["Beijing"]');
+            
+            let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+            
+            for (const city of selectedCities) {
+                const cityData = data[city] || data['Beijing']; // fallback if missing
+                if (!cityData) continue;
+                
+                // Show city name label
+                const cityNameMap = {
+                    'Beijing': '北京', 'Shanghai': '上海', 'Guangzhou': '广州', 
+                    'Shenzhen': '深圳', 'Hong Kong': '香港', 'London': '伦敦', 
+                    'Budapest': '布达佩斯', 'New York': '纽约'
+                };
+                const displayCity = cityNameMap[city] || city;
+                
+                html += `
+                    <div style="background:#f8fafc; border-radius:12px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="text-align:left;">
+                            <div style="font-size:14px; font-weight:bold; color:#1e293b;">${displayCity}</div>
+                            <div style="font-size:12px; color:#64748b;">${cityData.desc}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:24px; font-weight:bold; color:#2563eb; line-height:1;">${cityData.temp}°</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             const dateStr = new Date().toLocaleDateString('zh-CN', {month: 'short', day: 'numeric', weekday: 'short', hour: '2-digit', minute:'2-digit'});
             
-            return `
-                <div style="text-align:center; padding:5px 0;">
-                    <div style="font-size:54px; font-weight:bold; color:#2563eb; line-height:1; display:flex; align-items:center; justify-content:center;">${temp}<span style="font-size:24px;margin-left:5px;">°C</span></div>
-                    <div style="font-size:14px; color:#4b5563; margin-top:15px; font-weight:500;">${desc} | 湿度 ${humidity}% | 风速 ${wind}km/h</div>
-                    <div style="font-size:12px; color:#9ca3af; margin-top:15px; background:#f3f4f6; display:inline-block; padding:4px 12px; border-radius:20px;">数据更新于 ${dateStr}</div>
-                </div>`;
+            html += `
+                <div style="font-size:11px; color:#9ca3af; text-align:center; margin-top:5px;">更新于 ${dateStr}</div>
+                <button class="widget-action-btn" onclick="openTool('weather')" style="margin-top:8px;">查看全局天气详情与设置</button>
+            </div>`;
+            return html;
         }, isManualRefresh);
     }
     else if (key === 'currency') {

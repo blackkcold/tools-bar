@@ -2,59 +2,164 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>实时天气监控</title>
-    <link rel="stylesheet" href="form-theme.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>多城实时天气监控</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { padding: 20px; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; }
-        .weather-card { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; width: 100%; max-width: 400px; }
-        .refresh-btn {
-            background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 15px;
+        body { padding: 20px; font-family: 'Inter', sans-serif; background: #f0f2f5; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: #2563eb; text-align: center; margin-bottom: 30px;}
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .city-card {
+            background: #f8fafc; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
+        .city-name { font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 5px; }
+        .city-temp { font-size: 36px; font-weight: bold; color: #2563eb; line-height: 1; margin: 10px 0; }
+        .city-desc { font-size: 14px; color: #475569; font-weight: 500; }
+        .city-details { font-size: 12px; color: #64748b; margin-top: 5px; }
+
+        .settings-panel {
+            background: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+        }
+        .settings-title { font-size: 14px; font-weight: bold; color: #334155; margin-bottom: 15px; }
+        
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; }
+        .checkbox-label {
+            display: flex; align-items: center; font-size: 14px; color: #475569; cursor: pointer;
+        }
+        .checkbox-label input { margin-right: 6px; }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        
+        .btn {
+            background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background 0.2s;
+        }
+        .btn:hover { background: #1d4ed8; }
+        .btn-outline { background: white; color: #2563eb; border: 1px solid #2563eb; }
+        
+        #cache-time { font-size: 12px; color: #6b7280; }
+        #loading { text-align: center; color: #64748b; padding: 40px; display: none; }
     </style>
 </head>
 <body>
-    <div class="weather-card">
-        <h2 style="margin-top:0; color:#2563eb;">北京天气 (每日同步)</h2>
-        
-        <div id="weather-content" style="min-height: 120px; display:flex; flex-direction:column; justify-content:center;">
-            <div style="color:#9ca3af;">数据加载中...</div>
+    <div class="container">
+        <h2>🌤️ 多城实时天气</h2>
+
+        <div class="settings-panel">
+            <div class="settings-title">小组件显示设置 (面板最多推荐勾选2个)</div>
+            <div class="checkbox-group" id="city-checkboxes">
+                <!-- Checkboxes will be rendered here -->
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn btn-outline" onclick="saveWidgetSettings()">保存小组件偏好</button>
+                <span id="save-toast" style="font-size:12px; color:#10b981; margin-left:10px; display:none;">已保存！请刷新主面板。</span>
+            </div>
         </div>
 
-        <button class="refresh-btn" onclick="init(true)">强制刷新</button>
-        <p id="cache-time" style="font-size: 12px; color: #6b7280; margin-top: 15px;"></p>
+        <div id="loading">获取数据中...</div>
+        <div class="grid" id="weather-grid">
+            <!-- Cards will be rendered here -->
+        </div>
+
+        <div class="controls">
+            <span id="cache-time"></span>
+            <button class="btn" onclick="init(true)">强制刷新全局天气</button>
+        </div>
     </div>
 
     <script>
+        const cityMap = {
+            'Beijing': '北京', 'Shanghai': '上海', 'Guangzhou': '广州', 
+            'Shenzhen': '深圳', 'Hong Kong': '香港', 'London': '伦敦', 
+            'Budapest': '布达佩斯', 'New York': '纽约'
+        };
+
         async function init(forceRefresh = false) {
-            document.getElementById('weather-content').innerHTML = '<div style="color:#9ca3af;">数据同步中...</div>';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('weather-grid').innerHTML = '';
+            
             try {
                 let data;
                 if (window.parent && window.parent.GlobalDataManager) {
                     data = await window.parent.GlobalDataManager.getWeather(forceRefresh);
                 } else {
-                    const res = await fetch("https://wttr.in/Beijing?format=j1");
-                    data = await res.json();
+                    document.getElementById('loading').innerHTML = '请在 Dashboard 主面板中打开以加载全局数据';
+                    return;
                 }
 
-                const temp = data.current_condition[0].temp_C;
-                const desc = data.current_condition[0].weatherDesc[0].value;
-                const humidity = data.current_condition[0].humidity;
-                const wind = data.current_condition[0].windspeedKmph;
+                document.getElementById('loading').style.display = 'none';
+                
+                // Render Cards
+                let html = '';
+                for (const [cityKey, cityData] of Object.entries(data)) {
+                    const displayCity = cityMap[cityKey] || cityKey;
+                    html += `
+                        <div class="city-card">
+                            <div class="city-name">${displayCity}</div>
+                            <div class="city-temp">${cityData.temp}°</div>
+                            <div>
+                                <div class="city-desc">${cityData.desc}</div>
+                                <div class="city-details">湿度 ${cityData.humidity}% | 风 ${cityData.wind}km/h</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('weather-grid').innerHTML = html;
 
-                document.getElementById('weather-content').innerHTML = `
-                    <div style="font-size:64px; font-weight:bold; color:#1e293b; line-height:1; display:flex; align-items:center; justify-content:center;">${temp}<span style="font-size:24px;margin-left:5px;">°C</span></div>
-                    <div style="font-size:16px; color:#4b5563; margin-top:15px; font-weight:500;">${desc}</div>
-                    <div style="font-size:14px; color:#6b7280; margin-top:8px;">湿度 ${humidity}% | 风速 ${wind}km/h</div>
-                `;
-
-                const timeKey = localStorage.getItem('global_time_weather_json');
+                // Update time
+                const timeKey = localStorage.getItem('global_time_weather_multi_json');
                 const d = timeKey ? new Date(parseInt(timeKey)) : new Date();
                 document.getElementById('cache-time').innerText = `更新时间: ${d.toLocaleString('zh-CN')} (每天刷新一次)`;
 
+                renderSettings();
+
+                // 强制主面板更新UI
+                if (forceRefresh && window.parent && window.parent.refreshWidget) {
+                    window.parent.refreshWidget('weather');
+                }
+
             } catch (e) {
                 console.error(e);
-                document.getElementById('weather-content').innerHTML = '<div style="color:#ef4444;">天气数据获取失败</div>';
+                document.getElementById('loading').innerHTML = '<div style="color:#ef4444;">天气数据获取失败</div>';
+            }
+        }
+
+        function renderSettings() {
+            const savedCities = JSON.parse(localStorage.getItem('weather_widget_cities') || '["Beijing"]');
+            let html = '';
+            for (const [key, name] of Object.entries(cityMap)) {
+                const checked = savedCities.includes(key) ? 'checked' : '';
+                html += `
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="${key}" ${checked}> ${name}
+                    </label>
+                `;
+            }
+            document.getElementById('city-checkboxes').innerHTML = html;
+        }
+
+        function saveWidgetSettings() {
+            const checkboxes = document.querySelectorAll('#city-checkboxes input:checked');
+            const selected = Array.from(checkboxes).map(cb => cb.value);
+            
+            if(selected.length === 0) {
+                alert("至少选择1个城市显示在面板");
+                return;
+            }
+            if(selected.length > 2) {
+                alert("为保证面板美观，建议最多选择2个城市");
+            }
+            
+            localStorage.setItem('weather_widget_cities', JSON.stringify(selected));
+            
+            const toast = document.getElementById('save-toast');
+            toast.style.display = 'inline';
+            setTimeout(() => toast.style.display = 'none', 3000);
+
+            // Notify parent to re-render panel
+            if (window.parent && window.parent.refreshWidget) {
+                window.parent.refreshWidget('weather');
             }
         }
         
