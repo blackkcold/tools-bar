@@ -37,21 +37,6 @@ https://blackkcold.github.io/tools-bar/
 
 ---
 
-## 🚀 快速开始
-
-```bash
-# 进入项目目录
-cd /Users/11169285/Documents/Opencode\ project/temp
-
-# 启动本地 HTTP 服务
-python3 -m http.server 8765
-
-# 浏览器打开
-open http://localhost:8765
-```
-
----
-
 ## 📂 项目结构
 
 ```
