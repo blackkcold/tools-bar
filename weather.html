@@ -4,17 +4,61 @@
     <meta charset="UTF-8">
     <title>实时天气监控</title>
     <link rel="stylesheet" href="form-theme.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         body { padding: 20px; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; }
         .weather-card { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; width: 100%; max-width: 400px; }
+        .refresh-btn {
+            background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="weather-card">
-        <h2 style="margin-top:0; color:#2563eb;">多城市天气监控</h2>
-        <!-- 使用可靠的免费天气组件，适配宽度 -->
-        <iframe width="100%" scrolling="no" height="120" frameborder="0" allowtransparency="true" src="https://i.tianqi.com/index.php?c=code&id=12&icon=1&num=5&site=12"></iframe>
-        <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">数据由中国气象局提供支持</p>
+        <h2 style="margin-top:0; color:#2563eb;">北京天气 (每日同步)</h2>
+        
+        <div id="weather-content" style="min-height: 120px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="color:#9ca3af;">数据加载中...</div>
+        </div>
+
+        <button class="refresh-btn" onclick="init(true)">强制刷新</button>
+        <p id="cache-time" style="font-size: 12px; color: #6b7280; margin-top: 15px;"></p>
     </div>
+
+    <script>
+        async function init(forceRefresh = false) {
+            document.getElementById('weather-content').innerHTML = '<div style="color:#9ca3af;">数据同步中...</div>';
+            try {
+                let data;
+                if (window.parent && window.parent.GlobalDataManager) {
+                    data = await window.parent.GlobalDataManager.getWeather(forceRefresh);
+                } else {
+                    const res = await fetch("https://wttr.in/Beijing?format=j1");
+                    data = await res.json();
+                }
+
+                const temp = data.current_condition[0].temp_C;
+                const desc = data.current_condition[0].weatherDesc[0].value;
+                const humidity = data.current_condition[0].humidity;
+                const wind = data.current_condition[0].windspeedKmph;
+
+                document.getElementById('weather-content').innerHTML = `
+                    <div style="font-size:64px; font-weight:bold; color:#1e293b; line-height:1; display:flex; align-items:center; justify-content:center;">${temp}<span style="font-size:24px;margin-left:5px;">°C</span></div>
+                    <div style="font-size:16px; color:#4b5563; margin-top:15px; font-weight:500;">${desc}</div>
+                    <div style="font-size:14px; color:#6b7280; margin-top:8px;">湿度 ${humidity}% | 风速 ${wind}km/h</div>
+                `;
+
+                const timeKey = localStorage.getItem('global_time_weather_json');
+                const d = timeKey ? new Date(parseInt(timeKey)) : new Date();
+                document.getElementById('cache-time').innerText = `更新时间: ${d.toLocaleString('zh-CN')} (每天刷新一次)`;
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('weather-content').innerHTML = '<div style="color:#ef4444;">天气数据获取失败</div>';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => init(false));
+    </script>
 </body>
 </html>

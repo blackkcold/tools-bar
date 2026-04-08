@@ -22,41 +22,23 @@
             <option value="GBP">GBP 英镑</option>
         </select>
     </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <span id="cache-time" style="font-size:12px; color:#9ca3af;"></span>
-        <button onclick="init(true)" style="background:#2563eb; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12px;">强制刷新</button>
-    </div>
-
+    
     <div id="results" style="margin-top:20px;">
         <div style="text-align:center; color:#6b7280;">实时数据拉取中...</div>
     </div>
 
     <script>
-        
         let rates = {};
-        async function init(forceRefresh = false) {
-            document.getElementById('results').innerHTML = '<div style="color:#6b7280;text-align:center;">实时数据拉取中...</div>';
+        async function init() {
             try {
-                let data;
-                if (window.parent && window.parent.GlobalDataManager) {
-                    data = await window.parent.GlobalDataManager.getCurrency(forceRefresh);
-                } else {
-                    const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-                    data = await res.json();
-                }
+                const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+                const data = await res.json();
                 rates = data.rates;
                 convert();
-                
-                // Show cache time
-                const timeKey = localStorage.getItem('global_time_currency_json');
-                const d = timeKey ? new Date(parseInt(timeKey)) : new Date();
-                document.getElementById('cache-time').innerText = `更新时间: ${d.toLocaleString('zh-CN')} (每天刷新一次)`;
-            } catch (e) {
-                console.error(e);
+            } catch {
                 document.getElementById('results').innerHTML = '<div style="color:red;text-align:center;">汇率API请求失败，请检查网络</div>';
             }
         }
-
         function convert() {
             if(!rates['USD']) return; // Not loaded yet
             const amt = parseFloat(document.getElementById('amount').value) || 0;
