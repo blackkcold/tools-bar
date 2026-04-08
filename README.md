@@ -67,23 +67,18 @@ Tools Bar/
 ├── index.html                  # 主仪表盘及入口页面
 ├── app.js                      # 核心业务逻辑及仪表盘引擎
 ├── style.css / form-theme.css  # 核心样式与表单组件美化
-├── (计算器及工具 HTML 模块)
-│   ├── calc_fragment.html      # 科学计算器
-│   ├── mortgage_fragment.html  # 房贷计算器
-│   ├── car_loan.html           # 购车计算器
-│   ├── ev_tracker.html         # 电车能耗日志
-│   ├── ev_energy_cal.html      # EV续航成本分析
-│   ├── currency.html           # 实时汇率换算
-│   ├── deposit.html            # 存款利率
-│   ├── stocks.html             # 股市盘面
-│   └── weather.html            # 多城天气预报
-└── (仿真引擎 v2.0 相关文件)
-    ├── family_wealth_sim_v2.html # 仿真引擎入口
-    ├── app_fixed_v9.js         # 仿真应用主逻辑
-    ├── config_fixed_v9.js      # 参数与表单配置模块
-    ├── engines_fixed_v9.js     # 蒙特卡洛核心算法引擎
-    ├── charts_fixed_v9.js      # 图表与数据可视化模块
-    └── style_bundle_v9.css     # 仿真引擎专属样式表
+└── tools/                      # 模块化独立工具集
+    ├── calculator/             # 科学计算器
+    ├── car_loan/               # 购车计算器
+    ├── currency/               # 实时汇率换算
+    ├── deposit/                # 存款利率
+    ├── ev_energy/              # EV续航成本分析
+    ├── ev_tracker/             # 电车能耗日志
+    ├── family_wealth/          # 仿真引擎 v2.0 (包含专属JS/CSS/Vue逻辑)
+    ├── legacy/                 # 历史遗留工具
+    ├── mortgage/               # 房贷计算器
+    ├── stocks/                 # 股市盘面
+    └── weather/                # 多城天气预报
 ```
 
 ---

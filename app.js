@@ -6,16 +6,16 @@ const CACHE_EXPIRE_MS = 24 * 60 * 60 * 1000; // 24小时防封禁缓存
 
 // 核心工具配置清单：每个工具都必须有 htmlFile 才能触发全屏弹窗！
 const tools = {
-    calculator: { name: "高级科学计算器", icon: "calculate", htmlFile: "calc_fragment.html" },
-    carLoan: { name: "全能购车计算器", icon: "directions_car", htmlFile: "car_loan.html" },
-    evTracker: { name: "电车电费日志", icon: "ev_station", htmlFile: "ev_tracker.html" },
-    evEnergyCal: { name: "EV续航与成本", icon: "battery_charging_full", htmlFile: "ev_energy_cal.html" },
-    mortgage: { name: "房贷组合计算", icon: "real_estate_agent", htmlFile: "mortgage_fragment.html" },
-    weather: { name: "多城实时天气", icon: "cloud", htmlFile: "weather.html" },
-    currency: { name: "汇率多国对比", icon: "currency_exchange", htmlFile: "currency.html" },
-    deposit: { name: "2025存款利率", icon: "savings", htmlFile: "deposit.html" },
-    stocks: { name: "股市行情预览", icon: "trending_up", htmlFile: "stocks.html" },
-    familyWealth: { name: "家庭资产韧性仿真引擎 v2.0", icon: "insights", htmlFile: "family_wealth_sim_v2.html" }
+    calculator: { name: "高级科学计算器", icon: "calculate", htmlFile: "tools/calculator/calc_fragment.html" },
+    carLoan: { name: "全能购车计算器", icon: "directions_car", htmlFile: "tools/car_loan/car_loan.html" },
+    evTracker: { name: "电车电费日志", icon: "ev_station", htmlFile: "tools/ev_tracker/ev_tracker.html" },
+    evEnergyCal: { name: "EV续航与成本", icon: "battery_charging_full", htmlFile: "tools/ev_energy/ev_energy_cal.html" },
+    mortgage: { name: "房贷组合计算", icon: "real_estate_agent", htmlFile: "tools/mortgage/mortgage_fragment.html" },
+    weather: { name: "多城实时天气", icon: "cloud", htmlFile: "tools/weather/weather.html" },
+    currency: { name: "汇率多国对比", icon: "currency_exchange", htmlFile: "tools/currency/currency.html" },
+    deposit: { name: "2025存款利率", icon: "savings", htmlFile: "tools/deposit/deposit.html" },
+    stocks: { name: "股市行情预览", icon: "trending_up", htmlFile: "tools/stocks/stocks.html" },
+    familyWealth: { name: "家庭资产韧性仿真引擎 v2.0", icon: "insights", htmlFile: "tools/family_wealth/family_wealth_sim_v2.html" }
 };
 
 const grid = document.getElementById('plugin-grid');
