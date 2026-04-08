@@ -35,8 +35,8 @@ window.openTool = function(key) {
     }
     document.getElementById('dialog-title').innerText = tool.name;
     dialog.style.display = 'flex';
-    // 强制使用沙盒 iframe，绝对保证所有高阶图表、Vue、表单、API 的完美独立运行
-    featureView.innerHTML = `<iframe id="tool-iframe" src="${tool.htmlFile}" style="width:100%;height:100%;border:none;border-radius:12px;flex:1;background:#fff;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`;
+        // 强制使用沙盒 iframe，绝对保证所有高阶图表、Vue、表单、API 的完美独立运行
+    featureView.innerHTML = `<iframe id="tool-iframe" src="${tool.htmlFile}" style="width:100%;height:100%;border:none;border-radius:12px;flex:1;background:#fff;"></iframe>`;
 };
 
 window.closeTool = function() {
@@ -158,7 +158,7 @@ async function getWidgetContent(key, isManualRefresh = false) {
             let btcData = ['65000.00', '0.00'];
             
             try {
-                const res = await fetch("http://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_us.NDX");
+                const res = await fetch("https://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_us.NDX");
                 const text = await res.text();
                 const parseTencent = (txt, code) => {
                     const match = txt.match(new RegExp(`v_s_${code.replace('.', '\\.')}=".*?~.*?~.*?~(.*?)~(.*?)~(.*?)~`));
@@ -171,7 +171,7 @@ async function getWidgetContent(key, isManualRefresh = false) {
             } catch(e) { console.warn("Tencent API failed", e); }
 
             try {
-                const btcRes = await fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT");
+                const btcRes = await fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT");
                 const btcJson = await btcRes.json();
                 if(btcJson.lastPrice) btcData = [parseFloat(btcJson.lastPrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), parseFloat(btcJson.priceChangePercent).toFixed(2)];
             } catch(e) { console.warn("Binance API failed", e); }

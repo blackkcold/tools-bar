@@ -254,7 +254,7 @@
         async function fetchStocks() {
             try {
                 // 使用腾讯免费股票接口 (支持 CORS, 无需后端)
-                const response = await fetch("http://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_sz399006,s_sh000300,s_us.NDX,s_us.INX,s_us.DJI,s_hkHSI");
+                const response = await fetch("https://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_sz399006,s_sh000300,s_us.NDX,s_us.INX,s_us.DJI,s_hkHSI");
                 const text = await response.text();
                 const stocks = {};
                 
@@ -292,7 +292,7 @@
         async function fetchCrypto() {
             try {
                 // 使用 Binance 免费公开接口 (支持 CORS, 无需后端)
-                const response = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22DOGEUSDT%22%5D');
+                const response = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22DOGEUSDT%22%5D');
                 const data = await response.json();
                 const crypto = {};
                 
