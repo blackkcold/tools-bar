@@ -9,6 +9,7 @@ const app = createApp({
     components: { ParamInput },
     data() {
         return {
+                mobileMenuOpen: false,
             appConfig: JSON.parse(JSON.stringify(defaultConfig)),
             lastComputedConfig: null,
             simulationResults: null,
@@ -468,6 +469,7 @@ const app = createApp({
         },
         allocationLabels() {
             return {
+                mobileMenuOpen: false,
                 cash_alloc: '现金 / Cash',
                 bond_alloc: '债券 / Bond',
                 equity_alloc: '股票 / Equity',

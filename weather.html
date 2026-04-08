@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
     <title>多城实时天气监控</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -40,7 +41,18 @@
         
         #cache-time { font-size: 12px; color: #6b7280; }
         #loading { text-align: center; color: #64748b; padding: 40px; display: none; }
-    </style>
+    
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 15px; border-radius: 12px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
+            .city-card { padding: 12px; flex-direction: row; align-items: center; justify-content: space-between; }
+            .city-name { font-size: 16px; margin-bottom: 0; }
+            .city-temp { font-size: 28px; margin: 0; }
+            .city-desc, .city-details { text-align: right; }
+            .controls { flex-direction: column; gap: 15px; align-items: stretch; text-align: center; }
+        }
+</style>
 </head>
 <body>
     <div class="container">

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>全能购车计算器 (新能源/油车/对比/提前还款)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="form-theme.css">
@@ -47,7 +47,17 @@
         .comp-win { color: var(--success); }
         .comp-lose { color: var(--highlight); }
         .comp-msg { background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; }
-    </style>
+    
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .card { padding: 15px; margin-bottom: 15px; }
+            h2 { font-size: 1.1rem; }
+            .form-grid { grid-template-columns: 1fr; gap: 10px; }
+            .toggle-group { flex-direction: column; gap: 5px; }
+            .big-num { font-size: 1.8rem; }
+            .detail-row { font-size: 0.85rem; }
+        }
+</style>
 </head>
 <body>
 

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>股市行情预览 - 实时指数</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -165,7 +165,17 @@
         .last-update {
             opacity: 0.8;
         }
-    </style>
+    
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 22px; }
+            .grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+            .card { padding: 15px; }
+            .card-price { font-size: 26px; }
+            .status-bar { flex-direction: column; gap: 10px; text-align: center; }
+            .refresh-btn { bottom: 15px; right: 15px; width: 48px; height: 48px; }
+        }
+</style>
 </head>
 <body>
     <div class="container">

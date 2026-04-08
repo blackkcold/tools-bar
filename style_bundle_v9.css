@@ -414,3 +414,64 @@ canvas { max-width: 100%; }
   }
   .allocation-number, .allocation-value { width: 100%; text-align: left; }
 }
+
+
+/* Mobile responsiveness overrides for the simulator */
+@media (max-width: 1024px) {
+    /* Stack panels vertically on tablet and mobile */
+    .lg\:flex-row { flex-direction: column !important; }
+    .lg\:w-2\/5, .lg\:w-3\/5 { width: 100% !important; }
+    
+    /* Allow left panel to scroll naturally and remove height constraints on small screens */
+    .w-full.lg\:w-2\/5 {
+        max-height: none !important;
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+    }
+}
+
+@media (max-width: 640px) {
+    /* Metric boxes collapse to 2 columns or 1 column */
+    .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
+    .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    
+    /* Adjust chart container height for mobile */
+    .h-64 { height: 16rem !important; }
+    .h-72 { height: 18rem !important; }
+    
+    /* Fix tab layout wrapping */
+    nav.flex-wrap button {
+        flex: 1 1 calc(50% - 10px);
+        text-align: center;
+        padding: 8px 5px !important;
+        font-size: 11px !important;
+    }
+    
+    .text-xl { font-size: 1.1rem !important; line-height: 1.4 !important; }
+    
+    /* Global padding reductions */
+    .p-4, .p-6 { padding: 1rem !important; }
+    .px-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    .gap-6 { gap: 1rem !important; }
+    
+    .form-row { flex-direction: column !important; align-items: stretch !important; gap: 5px !important;}
+    .form-row label { margin-bottom: 2px !important; }
+}
+
+@media (max-width: 400px) {
+    .metric-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Desktop panel styling previously inline */
+.sim-left-panel {
+    min-height: 600px;
+    max-height: calc(100vh - 120px);
+}
+@media (max-width: 1024px) {
+    .sim-left-panel {
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+}

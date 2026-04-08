@@ -1,6 +1,6 @@
 <div style="padding:20px; font-family: 'Inter', sans-serif;">
     <h3 style="margin-top:0; color:#2563eb;">科学计算器</h3>
-    <input type="text" id="calc-display" readonly style="width:100%; height:60px; margin-bottom:15px; font-size:28px; text-align:right; border:1px solid #ccc; border-radius:8px; padding:0 10px; box-sizing:border-box; background:#f9fafb;">
+    <input type="text" id="calc-display" readonly style="width:100%; height:min(15vh, 60px); margin-bottom:15px; font-size:28px; text-align:right; border:1px solid #ccc; border-radius:8px; padding:0 10px; box-sizing:border-box; background:#f9fafb;">
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;">
         <button class="btn-calc" onclick="clearDisplay()" style="background:#ef4444;color:white;">AC</button>
         <button class="btn-calc" onclick="deleteChar()">DEL</button>
@@ -28,7 +28,7 @@
     </div>
 </div>
 <style>
-    .btn-calc { height:50px; font-size:18px; border:none; border-radius:8px; background:#f3f4f6; cursor:pointer; font-weight:600; transition:0.2s; }
+    .btn-calc { height:min(12vh, 50px); font-size:18px; border:none; border-radius:8px; background:#f3f4f6; cursor:pointer; font-weight:600; transition:0.2s; }
     .btn-calc:hover { filter:brightness(0.9); }
 </style>
 <script>

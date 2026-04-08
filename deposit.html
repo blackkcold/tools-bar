@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
     <title>存款利率跟踪</title>
     <link rel="stylesheet" href="form-theme.css">
@@ -10,6 +11,16 @@
         .rate-box p { margin: 8px 0; display: flex; justify-content: space-between; font-size: 16px; }
         .res-box { background: #eff6ff; padding: 20px; border-radius: 12px; margin-top: 20px; text-align: center; }
         .res-box h2 { margin: 0; color: #2563eb; font-size: 28px; }
+    </style>
+
+    <style>
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            h2 { font-size: 1.2rem; }
+            .form-group { display: flex; flex-direction: column; gap: 5px; }
+            .form-group > div { display: flex; flex-direction: column; gap: 10px; }
+            #results p { font-size: 16px !important; }
+        }
     </style>
 </head>
 <body>

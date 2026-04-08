@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家庭资产韧性仿真引擎 v2.0</title>
     <link rel="stylesheet" href="style_bundle_v9.css">
         <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
@@ -14,15 +14,28 @@
     <!-- 顶部工具栏 -->
     <div class="bg-white shadow-md sticky top-0 z-50">
         <div class="max-w-screen-2xl mx-auto px-4 py-3">
-            <div class="flex items-center justify-between flex-wrap gap-3">
-                <!-- 标题 -->
-                <div class="flex items-center gap-3">
-                    <h1 class="text-xl font-bold text-gray-800">🏠 家庭资产韧性仿真引擎</h1>
-                    <span class="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full">v2.0</span>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <!-- 顶部栏第一行: 标题 + 运行按钮 + 汉堡包(手机) -->
+                <div class="flex items-center justify-between w-full md:w-auto gap-3">
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl font-bold text-gray-800">🏠 资产韧性仿真</h1>
+                        <span class="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full hidden md:inline">v2.0</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="runSimulation" :disabled="isSimulating" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 disabled:opacity-50 text-sm flex items-center gap-1 md:hidden">
+                            <span>{{ isSimulating ? '计算中' : '开始计算' }}</span>
+                        </button>
+                        
+                        <button class="md:hidden p-2 rounded-lg bg-gray-100 text-gray-600" @click="mobileMenuOpen = !mobileMenuOpen">
+                            <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                            <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 控制区 -->
-                <div class="flex items-center gap-4 flex-wrap">
+                <div class="w-full md:w-auto flex flex-col md:flex-row items-start md:items-center gap-4" :class="{'hidden md:flex': !mobileMenuOpen}">
                     <!-- 家庭类型 -->
                     <div class="flex items-center gap-2" :title="getFieldTip('household_mode')">
                         <span class="text-xs font-medium" :class="appConfig.meta.household_mode === 'single_income' ? 'text-indigo-600 font-bold' : 'text-gray-400'">单人收入</span>
@@ -117,7 +130,7 @@
         <div class="flex flex-col lg:flex-row gap-6">
 
             <!-- 左侧参数区 -->
-            <div class="w-full lg:w-2/5 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col flex-shrink-0 overflow-hidden" style="min-height: 600px; max-height: calc(100vh - 120px);">
+            <div class="w-full lg:w-2/5 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col flex-shrink-0 overflow-hidden" class="sim-left-panel">
                 <!-- 模块Tab导航 -->
                 <div class="border-b border-gray-200">
                     <nav class="flex flex-wrap -mb-px">
@@ -151,13 +164,7 @@
                     <div v-show="activeTab === 'income_tax'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">收入与税务 / Income Tax</h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('income_tax_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="incomeTaxModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="incomeTaxModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
 
                         <div v-if="incomeTaxModule.mode === 'simple'" class="space-y-3">
@@ -193,13 +200,7 @@
                     <div v-show="activeTab === 'pf'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">公积金 / PF Module</h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('pf_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="pfModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="pfModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
                         <param-input label="本人月度公积金双边" v-model="appConfig.pf_module.params.main_monthly_pf" :step="500" tip="每月个人+公司缴纳的公积金"></param-input>
                         <param-input v-if="isDualIncome" label="配偶月度公积金" v-model="appConfig.pf_module.params.spouse_monthly_pf" :step="500" tip="配偶公积金"></param-input>
@@ -219,13 +220,7 @@
                     <div v-show="activeTab === 'housing'" class="space-y-4">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">房产与住房 / Housing</h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('housing_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="housingModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="housingModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
 
                         <div class="border-b pb-3 mb-3">
@@ -275,13 +270,7 @@
                     <div v-show="activeTab === 'mortgage'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">房贷模块 / Mortgage <span class="tooltip-icon" :title="getFieldTip('mortgage_linkage')">ⓘ</span></h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('mortgage_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="mortgageModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="mortgageModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
                         <param-input label="购房月供预算 (元)" v-model="appConfig.mortgage_module.params.monthly_emi" :step="500" tip="每月需还的等额本息金额"></param-input>
                         <param-input label="房贷年利率" v-model="appConfig.mortgage_module.params.mortgage_annual_rate" :step="0.001" tip="真实房贷年利率"></param-input>
@@ -320,13 +309,7 @@
                     <div v-show="activeTab === 'portfolio'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">投资组合 / Portfolio <span class="tooltip-icon" :title="getFieldTip('allocation_linkage')">ⓘ</span></h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('portfolio_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="portfolioModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="portfolioModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
 
                         <div v-if="portfolioModule.mode === 'simple'">
@@ -468,13 +451,7 @@
                     <div v-show="activeTab === 'crisis'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">危机与宏观 / Crisis</h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('crisis_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="crisisModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="crisisModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
 
                         <div v-if="crisisModule.mode === 'simple'">
@@ -577,13 +554,7 @@
                     <div v-show="activeTab === 'analysis'" class="space-y-4">
                             <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-gray-700">分析模块 / Analysis</h3>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">简化 / Simple</span>
-                                <button type="button" @click="toggleModuleMode('analysis_module')" class="relative w-10 h-5 rounded-full transition-colors" :class="analysisModule.mode === 'advanced' ? 'bg-purple-600' : 'bg-gray-300'">
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" :class="analysisModule.mode === 'advanced' ? 'translate-x-5' : 'translate-x-0'"></span>
-                                </button>
-                                <span class="text-xs text-gray-500">复杂 / Advanced</span>
-                            </div>
+                            
                         </div>
 
                         <div class="border-b pb-3 mb-3">
