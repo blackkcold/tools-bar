@@ -1,7 +1,7 @@
 # 杨昊燃 Tools Bar 🧰
 
 > 一个本地优先的个人工具聚合平台，涵盖计算器、房贷车贷、汇率、存款利率、股市行情、天气预报以及蒙特卡洛家庭资产仿真模型。
-
+https://blackkcold.github.io/tools-bar/
 ---
 
 ## ✨ 工具列表
@@ -34,21 +34,6 @@
 - **🖱️ 一键刷新** — 每个数据小组件支持手动强制刷新
 - **🖥️ 独立弹窗** — 工具以 iframe 形式全屏打开，完全独立的运行环境
 - **📱 响应式布局** — 自适应桌面端与移动端
-
----
-
-## 🚀 快速开始
-
-```bash
-# 进入项目目录
-cd /Users/11169285/Documents/Opencode\ project/temp
-
-# 启动本地 HTTP 服务
-python3 -m http.server 8765
-
-# 浏览器打开
-open http://localhost:8765
-```
 
 ---
 
