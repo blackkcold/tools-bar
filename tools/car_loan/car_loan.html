@@ -59,7 +59,7 @@
         }
 </style>
 </head>
-<body>
+<body class="form-theme">
 
 <div class="container">
     <div class="column">
@@ -411,11 +411,25 @@
         document.getElementById('barLoan').style.width = (principal / maxVal * 100) + "%";
         document.getElementById('barInt').style.width = (mainResult.totalInterest / maxVal * 100) + "%";
 
-        exportData = { vType: document.getElementById('vt-nev').checked ? "新能源 (NEV)" : "燃油车 (ICE)", price, dp, months, rateVal, tax, plate, ins, other, mainResult, totalLandingCost, comparison: {compPriceDiff, compRate, compFee, diffTotal, compMonthlyPay} };
+        exportData = {
+            vType: document.getElementById('vt-nev').checked ? "新能源 (NEV)" : "燃油车 (ICE)",
+            price,
+            dp,
+            months,
+            rateVal,
+            tax,
+            plate,
+            ins,
+            other,
+            mainResult,
+            schedule: mainResult.schedule,
+            totalLandingCost,
+            comparison: { compPriceDiff, compRate, compFee, diffTotal, compMonthlyPay }
+        };
     }
 
     function exportExcel() {
-        if(!exportData.schedule) return;
+        if (!exportData.schedule || !exportData.schedule.length) return;
         const summary = [ ["购车金融分析报告"], ["车辆类型", exportData.vType], ["裸车价格", exportData.price], ["购置税", exportData.tax], ["上牌/指标费", exportData.plate], ["保险及杂费", exportData.ins + exportData.other], [], ["首付金额", exportData.dp], ["贷款期数", exportData.months], ["当前方案利率", exportData.rateVal + "%"], [], ["当前方案月供", exportData.mainResult.monthlyPay.toFixed(2)], ["总利息支出", exportData.mainResult.totalInterest.toFixed(2)], ["落地总花费", exportData.totalLandingCost.toFixed(2)], [], ["--- 免息方案对比 ---"], ["免息方案利率", exportData.comparison.compRate + "%"], ["免息方案车价差异", exportData.comparison.compPriceDiff], ["免息方案月供", exportData.comparison.compMonthlyPay], ["总成本差异 (负数代表当前方案划算)", exportData.comparison.diffTotal.toFixed(2)] ];
         const headers = [["期数", "月供", "本金", "利息", "剩余本金"]];
         const rows = exportData.schedule.map(r => [r.m, r.pay.toFixed(2), r.prin.toFixed(2), r.int.toFixed(2), r.bal.toFixed(2)]);

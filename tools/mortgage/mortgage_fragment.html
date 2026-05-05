@@ -38,33 +38,26 @@
     </div>
 </div>
 
+<script src="./mortgage_core.js"></script>
 <script>
     function calculateMortgage() {
         const commP = (parseFloat(document.getElementById('mort-comm').value) || 0) * 10000;
-        const commR = (parseFloat(document.getElementById('mort-comm-rate').value) || 0) / 100 / 12;
         const fundP = (parseFloat(document.getElementById('mort-fund').value) || 0) * 10000;
-        const fundR = (parseFloat(document.getElementById('mort-fund-rate').value) || 0) / 100 / 12;
-        const n = parseInt(document.getElementById('mort-years').value) * 12;
+        const commRate = parseFloat(document.getElementById('mort-comm-rate').value) || 0;
+        const fundRate = parseFloat(document.getElementById('mort-fund-rate').value) || 0;
+        const years = parseInt(document.getElementById('mort-years').value, 10) || 0;
+        const summary = MortgageCore.calculateLoanSummary({
+            commercialPrincipal: commP,
+            commercialRate: commRate,
+            providentPrincipal: fundP,
+            providentRate: fundRate,
+            years
+        });
 
-        let commMonthly = 0;
-        let fundMonthly = 0;
-
-        if (commP > 0 && commR > 0) {
-            commMonthly = commP * commR * Math.pow(1 + commR, n) / (Math.pow(1 + commR, n) - 1);
-        }
-        if (fundP > 0 && fundR > 0) {
-            fundMonthly = fundP * fundR * Math.pow(1 + fundR, n) / (Math.pow(1 + fundR, n) - 1);
-        }
-
-        const totalMonthly = commMonthly + fundMonthly;
-        const totalLoan = commP + fundP;
-        const totalPay = totalMonthly * n;
-        const totalInt = totalPay - totalLoan;
-
-        document.getElementById('res-monthly').innerText = totalMonthly.toFixed(2) + ' 元';
-        document.getElementById('res-total-loan').innerText = (totalLoan / 10000).toFixed(2) + ' 万元';
-        document.getElementById('res-total-int').innerText = (totalInt / 10000).toFixed(2) + ' 万元';
-        document.getElementById('res-total-pay').innerText = (totalPay / 10000).toFixed(2) + ' 万元';
+        document.getElementById('res-monthly').innerText = summary.totalMonthly.toFixed(2) + ' 元';
+        document.getElementById('res-total-loan').innerText = (summary.totalLoan / 10000).toFixed(2) + ' 万元';
+        document.getElementById('res-total-int').innerText = (summary.totalInterest / 10000).toFixed(2) + ' 万元';
+        document.getElementById('res-total-pay').innerText = (summary.totalPay / 10000).toFixed(2) + ' 万元';
         
         document.getElementById('mort-result').style.display = 'block';
     }

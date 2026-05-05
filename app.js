@@ -91,41 +91,10 @@ async getCurrency(forceRefresh = false) {
 
     async getStocks(forceRefresh = false) {
         return this.fetchWithCache('stocks_json', async () => {
-            let result = { stocks: {}, crypto: {} };
-            try {
-                const res = await fetch("https://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_sz399006,s_sh000300,s_us.NDX,s_us.INX,s_us.DJI,s_hkHSI");
-                const text = await res.text();
-                const lines = text.split(';');
-                for (let line of lines) {
-                    let parseLine = (code, name) => {
-                        let regex = new RegExp(`v_s_${code.replace('.', '\\.')}=".*?~.*?~.*?~(.*?)~(.*?)~(.*?)~`);
-                        let match = line.match(regex);
-                        if (match) result.stocks[code] = { name: name, price: parseFloat(match[1]), change: parseFloat(match[2]), change_pct: parseFloat(match[3]) };
-                    };
-                    parseLine('sh000001', '上证指数');
-                    parseLine('sz399001', '深证成指');
-                    parseLine('sz399006', '创业板指');
-                    parseLine('sh000300', '沪深300');
-                    parseLine('us.NDX', '纳斯达克100');
-                    parseLine('us.INX', '标普500');
-                    parseLine('us.DJI', '道琼斯');
-                    parseLine('hkHSI', '恒生指数');
-                }
-            } catch(e) {}
-            
-            try {
-                const res = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22DOGEUSDT%22%5D');
-                const data = await res.json();
-                data.forEach(item => {
-                    result.crypto[item.symbol] = {
-                        name: item.symbol.replace('USDT', ''),
-                        price: parseFloat(item.lastPrice),
-                        change: parseFloat(item.priceChange),
-                        change_pct: parseFloat(item.priceChangePercent)
-                    };
-                });
-            } catch(e) {}
-            return result;
+            if (!window.StockMarketData || !window.StockMarketData.fetchStocksAndCrypto) {
+                throw new Error('StockMarketData helper missing');
+            }
+            return await window.StockMarketData.fetchStocksAndCrypto();
         }, forceRefresh);
     }
 };
@@ -144,6 +113,19 @@ window.openTool = function(key) {
     dialog.style.display = 'flex';
         // 强制使用沙盒 iframe，绝对保证所有高阶图表、Vue、表单、API 的完美独立运行
     featureView.innerHTML = `<iframe id="tool-iframe" src="${tool.htmlFile}" style="width:100%;height:100%;border:none;border-radius:12px;flex:1;background:#fff;"></iframe>`;
+};
+
+window.runQuickCalc = function(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || !window.CalculatorCore) {
+        return;
+    }
+
+    try {
+        input.value = window.CalculatorCore.evaluateExpression(input.value);
+    } catch (error) {
+        input.value = 'Error';
+    }
 };
 
 window.closeTool = function() {
@@ -169,7 +151,7 @@ window.unpinTool = function(key) {
 };
 
 // ==========================================
-// 数据与缓存引擎 (12小时免打扰策略)
+// 数据与缓存引擎 (24小时免打扰策略)
 // ==========================================
 async function cachedFetch(key, fetcher, isManualRefresh = false) {
     const cacheKey = `widget_data_${key}`;
@@ -203,10 +185,17 @@ window.refreshWidget = async function(key) {
     const contentBox = document.getElementById(`widget-${key}`);
     if (contentBox) contentBox.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af;">🔄 数据同步中...</div>`;
     
-    const content = await getWidgetContent(key, true); // true = 强制无视缓存
-    if (contentBox) contentBox.innerHTML = content;
-    
-    if(btn) setTimeout(() => { btn.style.transform = "none"; }, 500);
+    try {
+        const content = await getWidgetContent(key, true); // true = 强制无视缓存
+        if (contentBox) contentBox.innerHTML = content;
+    } catch (error) {
+        console.error(`Widget refresh failed for ${key}:`, error);
+        if (contentBox) {
+            contentBox.innerHTML = `<div style="text-align:center;padding:30px;color:#ef4444;">刷新失败，请稍后重试</div>`;
+        }
+    } finally {
+        if(btn) setTimeout(() => { btn.style.transform = "none"; }, 500);
+    }
 };
 
 // ==========================================
@@ -319,7 +308,7 @@ async function getWidgetContent(key, isManualRefresh = false) {
             <div style="text-align:center; padding:0;">
                 <div style="font-size:13px; color:#6b7280; margin-bottom:10px;">支持复杂科学函数</div>
                 <input type="text" placeholder="快捷输入 (如 3*4)" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; box-sizing:border-box; margin-bottom:10px;" id="fast-calc">
-                <button class="widget-action-btn" style="margin-top:0;" onclick="try{document.getElementById('fast-calc').value=eval(document.getElementById('fast-calc').value)}catch{document.getElementById('fast-calc').value='Error'}">快捷计算</button>
+                <button class="widget-action-btn" style="margin-top:0;" onclick="runQuickCalc('fast-calc')">快捷计算</button>
                 <div style="margin-top:15px;"><a href="#" onclick="openTool('calculator')" style="color:#2563eb; font-size:13px; text-decoration:none; font-weight:bold;">进入完整高级计算器 →</a></div>
             </div>`;
     }
@@ -374,33 +363,41 @@ async function renderPanels() {
     if (!panelsGrid) return;
     panelsGrid.innerHTML = '';
     const pinned = JSON.parse(localStorage.getItem('pinnedTools') || '[]');
-    for (const key of pinned) {
+    const panelTasks = pinned.map(async (key) => {
         const item = tools[key];
-        if (item) {
-            const panel = document.createElement('div');
-            panel.className = 'panel-card';
-            
-            // 是否为需要刷新的数据组件？
-            const isDataWidget = ['weather', 'currency', 'stocks'].includes(key);
-            const refreshBtnHtml = isDataWidget ? `<button id="refresh-btn-${key}" onclick="refreshWidget('${key}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:0;margin-left:10px;transition:transform 0.5s;" title="强制刷新"><span class="material-icons" style="font-size:16px;">refresh</span></button>` : '';
+        if (!item) return null;
 
-            // Widget 标题栏
-            panel.innerHTML = `
-                <h4 style="margin: 0 0 15px 0; color: #2563eb; display: flex; justify-content: space-between; align-items: center; font-size: 16px;">
-                    <span style="display:flex;align-items:center;"><span class="material-icons" style="font-size:18px;margin-right:8px;">${item.icon}</span>${item.name} ${refreshBtnHtml}</span>
-                    <button onclick="unpinTool('${key}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:0;">取消固定</button>
-                </h4>
-                <div class="panel-content" id="widget-${key}">
-                    <div style="text-align:center;padding:20px;color:#9ca3af;">加载中...</div>
-                </div>`;
-            panelsGrid.appendChild(panel);
+        const panel = document.createElement('div');
+        panel.className = 'panel-card';
 
-            // 异步直出小组件内容
-            const contentBox = document.getElementById(`widget-${key}`);
+        const isDataWidget = ['weather', 'currency', 'stocks'].includes(key);
+        const refreshBtnHtml = isDataWidget ? `<button id="refresh-btn-${key}" onclick="refreshWidget('${key}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;padding:0;margin-left:10px;transition:transform 0.5s;" title="强制刷新"><span class="material-icons" style="font-size:16px;">refresh</span></button>` : '';
+
+        panel.innerHTML = `
+            <h4 style="margin: 0 0 15px 0; color: #2563eb; display: flex; justify-content: space-between; align-items: center; font-size: 16px;">
+                <span style="display:flex;align-items:center;"><span class="material-icons" style="font-size:18px;margin-right:8px;">${item.icon}</span>${item.name} ${refreshBtnHtml}</span>
+                <button onclick="unpinTool('${key}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:0;">取消固定</button>
+            </h4>
+            <div class="panel-content" id="widget-${key}">
+                <div style="text-align:center;padding:20px;color:#9ca3af;">加载中...</div>
+            </div>`;
+
+        const contentBox = panel.querySelector('.panel-content');
+        try {
             const content = await getWidgetContent(key, false);
-            if(contentBox) contentBox.innerHTML = content;
+            if (contentBox) contentBox.innerHTML = content;
+        } catch (error) {
+            console.error(`Widget render failed for ${key}:`, error);
+            if (contentBox) {
+                contentBox.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444;">加载失败，请稍后重试</div>`;
+            }
         }
-    }
+
+        return panel;
+    });
+
+    const panels = await Promise.all(panelTasks);
+    panels.filter(Boolean).forEach(panel => panelsGrid.appendChild(panel));
 }
 
 function render() {

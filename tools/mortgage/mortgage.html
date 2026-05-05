@@ -19,12 +19,13 @@
     <button onclick="calc()">计算每月还款</button>
     <h4 id="result"></h4>
 </div>
+<script src="./mortgage_core.js"></script>
 <script>
     function calc() {
         const P = parseFloat(document.getElementById('amount').value);
-        const r = parseFloat(document.getElementById('rate').value) / 100 / 12;
-        const n = parseFloat(document.getElementById('years').value) * 12;
-        const monthly = P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+        const rate = parseFloat(document.getElementById('rate').value);
+        const years = parseFloat(document.getElementById('years').value);
+        const monthly = MortgageCore.calculateMonthlyPayment(P, rate, years * 12);
         document.getElementById('result').innerText = "每月还款: " + monthly.toFixed(2) + " 元";
     }
 </script>

@@ -2,44 +2,36 @@
     <h3 style="margin-top:0; color:#2563eb;">科学计算器</h3>
     <input type="text" id="calc-display" readonly style="width:100%; height:min(15vh, 60px); margin-bottom:15px; font-size:28px; text-align:right; border:1px solid #ccc; border-radius:8px; padding:0 10px; box-sizing:border-box; background:#f9fafb;">
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;">
-        <button class="btn-calc" onclick="clearDisplay()" style="background:#ef4444;color:white;">AC</button>
-        <button class="btn-calc" onclick="deleteChar()">DEL</button>
-        <button class="btn-calc" onclick="appendToDisplay('%')">%</button>
-        <button class="btn-calc" onclick="appendToDisplay('/')" style="background:#e0e7ff;color:#2563eb;">/</button>
+        <button class="btn-calc" onclick="calc.clearDisplay()" style="background:#ef4444;color:white;">AC</button>
+        <button class="btn-calc" onclick="calc.deleteChar()">DEL</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('%')">%</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('/')" style="background:#e0e7ff;color:#2563eb;">/</button>
         
-        <button class="btn-calc" onclick="appendToDisplay('7')">7</button>
-        <button class="btn-calc" onclick="appendToDisplay('8')">8</button>
-        <button class="btn-calc" onclick="appendToDisplay('9')">9</button>
-        <button class="btn-calc" onclick="appendToDisplay('*')" style="background:#e0e7ff;color:#2563eb;">*</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('7')">7</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('8')">8</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('9')">9</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('*')" style="background:#e0e7ff;color:#2563eb;">*</button>
         
-        <button class="btn-calc" onclick="appendToDisplay('4')">4</button>
-        <button class="btn-calc" onclick="appendToDisplay('5')">5</button>
-        <button class="btn-calc" onclick="appendToDisplay('6')">6</button>
-        <button class="btn-calc" onclick="appendToDisplay('-')" style="background:#e0e7ff;color:#2563eb;">-</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('4')">4</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('5')">5</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('6')">6</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('-')" style="background:#e0e7ff;color:#2563eb;">-</button>
         
-        <button class="btn-calc" onclick="appendToDisplay('1')">1</button>
-        <button class="btn-calc" onclick="appendToDisplay('2')">2</button>
-        <button class="btn-calc" onclick="appendToDisplay('3')">3</button>
-        <button class="btn-calc" onclick="appendToDisplay('+')" style="background:#e0e7ff;color:#2563eb;">+</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('1')">1</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('2')">2</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('3')">3</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('+')" style="background:#e0e7ff;color:#2563eb;">+</button>
         
-        <button class="btn-calc" onclick="appendToDisplay('0')" style="grid-column:span 2;">0</button>
-        <button class="btn-calc" onclick="appendToDisplay('.')">.</button>
-        <button class="btn-calc" onclick="calculate()" style="background:#2563eb;color:white;">=</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('0')" style="grid-column:span 2;">0</button>
+        <button class="btn-calc" onclick="calc.appendToDisplay('.')">.</button>
+        <button class="btn-calc" onclick="calc.calculate()" style="background:#2563eb;color:white;">=</button>
     </div>
 </div>
 <style>
     .btn-calc { height:min(12vh, 50px); font-size:18px; border:none; border-radius:8px; background:#f3f4f6; cursor:pointer; font-weight:600; transition:0.2s; }
     .btn-calc:hover { filter:brightness(0.9); }
 </style>
+<script src="./calculator_core.js"></script>
 <script>
-    function appendToDisplay(v) { document.getElementById('calc-display').value += v; }
-    function clearDisplay() { document.getElementById('calc-display').value = ''; }
-    function deleteChar() { 
-        let d = document.getElementById('calc-display');
-        d.value = d.value.slice(0, -1); 
-    }
-    function calculate() { 
-        try { document.getElementById('calc-display').value = eval(document.getElementById('calc-display').value); } 
-        catch { document.getElementById('calc-display').value = 'Error'; } 
-    }
+    window.calc = CalculatorCore.bindCalculator('calc-display');
 </script>

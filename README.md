@@ -11,7 +11,7 @@
 
 - **📦 本地存储优先**：所有数据保存在浏览器 `localStorage`，确保数据隐私安全。
 - **📌 面板可定制化**：支持将常用工具以小组件形式固定到 Dashboard 实时监控面板。
-- **🔄 防封禁防抖动**：API 数据自动提供 12 小时本地缓存，防止频繁请求导致 IP 封禁，并支持手动强制刷新。
+- **🔄 防封禁防抖动**：API 数据自动提供 24 小时本地缓存，防止频繁请求导致 IP 封禁，并支持手动强制刷新。
 - **🖥️ 独立沙箱运行**：各类工具以 `iframe` 形式全屏打开，相互之间完全隔离，保证运行环境的独立与稳定。
 - **📱 响应式自适应**：完美适配桌面端大屏与移动端小屏。
 
@@ -68,7 +68,7 @@ Tools Bar/
 ├── app.js                      # 核心业务逻辑及仪表盘引擎
 ├── style.css / form-theme.css  # 核心样式与表单组件美化
 └── tools/                      # 模块化独立工具集
-    ├── calculator/             # 科学计算器
+    ├── calculator/             # 科学计算器（含 calculator_core.js）
     ├── car_loan/               # 购车计算器
     ├── currency/               # 实时汇率换算
     ├── deposit/                # 存款利率
@@ -76,10 +76,12 @@ Tools Bar/
     ├── ev_tracker/             # 电车能耗日志
     ├── family_wealth/          # 仿真引擎 v2.0 (包含专属JS/CSS/Vue逻辑)
     ├── legacy/                 # 历史遗留工具
-    ├── mortgage/               # 房贷计算器
-    ├── stocks/                 # 股市盘面
+    ├── mortgage/               # 房贷计算器（含 mortgage_core.js）
+    ├── stocks/                 # 股市盘面（含 market_data.js）
     └── weather/                # 多城天气预报
 ```
+
+> 注：`tools/legacy/` 与 `tools/stocks/stock_api.py` 目前保留为历史/备用实现，不属于当前主入口链路。
 
 ---
 

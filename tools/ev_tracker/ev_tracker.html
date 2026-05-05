@@ -45,7 +45,7 @@
     .small-hint { font-size: 11px; color: #6b7280; margin-top: 4px; }
   </style>
 </head>
-<body>
+<body class="form-theme">
 <header>
   <div>
     <h1>电车用电 & 费用统计助手</h1>
@@ -153,7 +153,7 @@
   function loadRecords() {
     return loadRecordsRaw().map(r => ({
       id: r.id || ('r_' + Math.random()), carId: r.carId || DEFAULT_CAR_ID, date: r.date || '',
-      odometer: r.odometer ? Number(r.odometer) : null, kwh: Number(r.kwh || 0), cost: Number(r.cost || 0),
+      odometer: r.odometer != null ? Number(r.odometer) : null, kwh: Number(r.kwh || 0), cost: Number(r.cost || 0),
       chargeType: r.chargeType, kind: r.kind
     }));
   }
@@ -165,7 +165,7 @@
     select.innerHTML = ''; const currentId = getCurrentCarId();
     cars.forEach(car => { const opt = document.createElement('option'); opt.value = car.id; opt.textContent = car.name; if (car.id === currentId) opt.selected = true; select.appendChild(opt); });
     const car = cars.find(c => c.id === currentId);
-    batteryInput.value = car && car.batteryKwh ? car.batteryKwh : '';
+    batteryInput.value = car && car.batteryKwh != null ? car.batteryKwh : '';
   }
 
   function getRecordsForCurrentCar() { const carId = getCurrentCarId(); return loadRecords().filter(r => r.carId === carId); }
@@ -200,7 +200,10 @@
   function renderTypeStats() {
     const container = document.getElementById('typeStats');
     const allRecords = getRecordsForCurrentCar();
-    if (!allRecords.length) return;
+    if (!allRecords.length) {
+      container.innerHTML = `<div class="chip"><div class="chip-title">提示</div><div class="chip-value">暂无记录。</div></div>`;
+      return;
+    }
     const sumByType = type => {
       const f = allRecords.filter(r => r.chargeType === type);
       return { kwh: f.filter(r => r.kind!=='coupon').reduce((s,r)=>s+r.kwh,0), cost: f.reduce((s,r)=>s+r.cost,0) };
@@ -231,6 +234,28 @@
     renderAll();
   }
 
+  window.deleteCar = function() {
+    const cars = loadCars();
+    const currentId = getCurrentCarId();
+    if (cars.length <= 1) {
+      alert('至少保留一辆车');
+      return;
+    }
+
+    const currentCar = cars.find(c => c.id === currentId);
+    if (!currentCar) return;
+
+    if (!confirm(`确认删除车辆「${currentCar.name}」以及它的所有记录吗？`)) {
+      return;
+    }
+
+    const nextCars = cars.filter(c => c.id !== currentId);
+    saveCars(nextCars);
+    saveRecords(loadRecords().filter(r => r.carId !== currentId));
+    setCurrentCarId(nextCars[0].id);
+    renderAll();
+  }
+
   function renderAll() { renderCars(); renderStats(); renderTypeStats(); renderTable(); }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -245,6 +270,9 @@
     document.getElementById('addCarBtn').addEventListener('click', () => {
       const name = document.getElementById('newCarName').value.trim();
       if(name) { const cars=loadCars(); const id='c_'+Date.now(); cars.push({id,name,batteryKwh:null}); saveCars(cars); setCurrentCarId(id); document.getElementById('newCarName').value=''; renderAll(); }
+    });
+    document.getElementById('deleteCarBtn').addEventListener('click', () => {
+      window.deleteCar();
     });
     document.getElementById('addRecordBtn').addEventListener('click', () => {
       const kind = document.getElementById('recordKindInput').value;

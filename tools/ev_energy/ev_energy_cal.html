@@ -991,13 +991,19 @@
         elements.lockedSoc.value = settings.batteryCalc.lockedSoc || 3;
       }
 
-      if (settings.timePeriods && settings.timePeriods.length === 6) {
-        settings.timePeriods.forEach((period, i) => {
+      const periodCount = document.querySelectorAll('.period-type').length;
+      if (settings.timePeriods && Array.isArray(settings.timePeriods)) {
+        for (let i = 0; i < periodCount; i++) {
           const typeSelect = document.querySelector(`.period-type[data-period="${i}"]`);
           const priceInput = document.querySelector(`.period-price[data-period="${i}"]`);
-          if (typeSelect) typeSelect.value = period.type || 'valley';
-          if (priceInput) priceInput.value = period.price || 0;
-        });
+          const period = settings.timePeriods[i];
+          if (typeSelect) {
+            typeSelect.value = period ? (period.type || 'valley') : (typeSelect.options[0]?.value || 'valley');
+          }
+          if (priceInput) {
+            priceInput.value = period ? (period.price ?? 0) : 0;
+          }
+        }
       }
 
       if (settings.chargePreference) {
@@ -1017,18 +1023,22 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     }
 
+    function refreshAllOutputs() {
+      updateChargeTimeOptions();
+      calculateRangeConversion();
+      calculateBatteryRange();
+      calculateCosts();
+      updateRangeChart();
+      updateCostChart();
+    }
+
     function loadSettings() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
           const settings = JSON.parse(saved);
           if (applySettings(settings)) {
-            updateChargeTimeOptions();
-            calculateRangeConversion();
-            calculateBatteryRange();
-            calculateCosts();
-            updateRangeChart();
-            updateCostChart();
+            refreshAllOutputs();
           }
         } catch (e) {
           console.warn('加载设置失败:', e);
@@ -1057,12 +1067,7 @@
           const settings = JSON.parse(e.target.result);
           if (applySettings(settings)) {
             saveSettings();
-            updateChargeTimeOptions();
-            calculateRangeConversion();
-            calculateBatteryRange();
-            calculateCosts();
-            updateRangeChart();
-            updateCostChart();
+            refreshAllOutputs();
             alert('设置导入成功！');
           }
         } catch (err) {

@@ -13,6 +13,11 @@ function boxMuller() {
 function getPercentile(arr, p) {
     if (!arr || arr.length === 0) return 0;
     const sorted = [...arr].sort((a, b) => a - b);
+    return getPercentileFromSorted(sorted, p);
+}
+
+function getPercentileFromSorted(sorted, p) {
+    if (!sorted || sorted.length === 0) return 0;
     const idx = Math.floor(sorted.length * p);
     return sorted[Math.min(idx, sorted.length - 1)];
 }
@@ -410,28 +415,28 @@ const simulationEngine = {
         const crisisCounts = results.map(r => r.crisisCount);
         const loanFreeYears = results.map(r => r.loanFreeYear).filter(y => y !== null && !isNaN(y));
 
-        realVals.sort((a, b) => a - b);
-        nominalVals.sort((a, b) => a - b);
+        const sortedRealVals = [...realVals].sort((a, b) => a - b);
+        const sortedNominalVals = [...nominalVals].sort((a, b) => a - b);
 
         const medianTrace = [];
         const p10Trace = [], p90Trace = [];
         for (let y = 0; y < years; y++) {
             const yearVals = results.map(r => r.trace[y].totalReal / 10000);
             yearVals.sort((a, b) => a - b);
-            medianTrace.push(getPercentile(yearVals, 0.5));
-            p10Trace.push(getPercentile(yearVals, 0.1));
-            p90Trace.push(getPercentile(yearVals, 0.9));
+            medianTrace.push(getPercentileFromSorted(yearVals, 0.5));
+            p10Trace.push(getPercentileFromSorted(yearVals, 0.1));
+            p90Trace.push(getPercentileFromSorted(yearVals, 0.9));
         }
 
         return {
-            mean_nominal_wan: mean(nominalVals) / 10000,
-            median_nominal_wan: getPercentile(nominalVals, 0.5) / 10000,
-            mean_real_wan: mean(realVals) / 10000,
-            median_real_wan: getPercentile(realVals, 0.5) / 10000,
-            p10_real_wan: getPercentile(realVals, 0.1) / 10000,
-            p25_real_wan: getPercentile(realVals, 0.25) / 10000,
-            p75_real_wan: getPercentile(realVals, 0.75) / 10000,
-            p90_real_wan: getPercentile(realVals, 0.9) / 10000,
+            mean_nominal_wan: mean(sortedNominalVals) / 10000,
+            median_nominal_wan: getPercentileFromSorted(sortedNominalVals, 0.5) / 10000,
+            mean_real_wan: mean(sortedRealVals) / 10000,
+            median_real_wan: getPercentileFromSorted(sortedRealVals, 0.5) / 10000,
+            p10_real_wan: getPercentileFromSorted(sortedRealVals, 0.1) / 10000,
+            p25_real_wan: getPercentileFromSorted(sortedRealVals, 0.25) / 10000,
+            p75_real_wan: getPercentileFromSorted(sortedRealVals, 0.75) / 10000,
+            p90_real_wan: getPercentileFromSorted(sortedRealVals, 0.9) / 10000,
             ruin_probability: mean(ruinedFlags),
             avg_ruin_year: ruinYears.length > 0 ? mean(ruinYears) : NaN,
             avg_crisis_count: mean(crisisCounts),
@@ -450,10 +455,10 @@ const simulationEngine = {
         const rentCashArr = rentResults.map(r => (r.finalCash || 0) / inflationFactor / 10000).sort((a, b) => a - b);
         const discountedRentArr = rentResults.map(r => (r.cumulativeDiscountedRent || 0) / 10000).sort((a, b) => a - b);
 
-        const buyMedianCash = getPercentile(buyCashArr, 0.5);
-        const buyMedianEquity = getPercentile(buyEquityArr, 0.5);
-        const rentMedianCash = getPercentile(rentCashArr, 0.5);
-        const discountedRentMedian = getPercentile(discountedRentArr, 0.5);
+        const buyMedianCash = getPercentileFromSorted(buyCashArr, 0.5);
+        const buyMedianEquity = getPercentileFromSorted(buyEquityArr, 0.5);
+        const rentMedianCash = getPercentileFromSorted(rentCashArr, 0.5);
+        const discountedRentMedian = getPercentileFromSorted(discountedRentArr, 0.5);
 
         return {
             buy: {

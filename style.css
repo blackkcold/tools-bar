@@ -16,11 +16,10 @@ body, html { height: 100%; margin: 0; font-family: 'Inter', system-ui, sans-seri
 .panel-card h4 { margin: 0 0 15px 0; color: #2563eb; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
 .panel-content { flex: 1; overflow-y: auto; font-size: 14px; }
 /* 小组件内部样式 */
-.widget-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+.widget-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
 .widget-row:last-child { border-bottom: none; }
-.widget-row b { color: #2563eb; }
+.widget-row b { color: #1f2937; }
 
-/* 在 style.css 末尾追加以下样式以支持卡片右上角的图钉按钮和更好的 Widget 布局 */
 .card { position: relative; } /* 为绝对定位图钉做准备 */
 .pin-btn { 
     position: absolute; top: 12px; right: 12px; background: #f3f4f6; 
@@ -30,10 +29,6 @@ body, html { height: 100%; margin: 0; font-family: 'Inter', system-ui, sans-seri
 }
 .pin-btn:hover { background: #e5e7eb; color: #2563eb; }
 
-/* 专门美化面板内的小组件样式 */
-.widget-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
-.widget-row:last-child { border-bottom: none; }
-.widget-row b { color: #1f2937; }
 .widget-action-btn { 
     width: 100%; padding: 10px; background: #eff6ff; color: #2563eb; 
     border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
@@ -85,8 +80,25 @@ body, html { height: 100%; margin: 0; font-family: 'Inter', system-ui, sans-seri
     }
 
     .header h1 {
-        font-size: 24px;
+        font-size: 1.5rem;
         margin-top: 10px;
+    }
+
+    /* 隐藏不必要的侧边栏文字，使其变成纯顶栏 */
+    #nav-list {
+        display: none;
+    }
+
+    .sidebar {
+        padding: 10px 15px;
+        position: sticky;
+        top: 0;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+    }
+
+    .logo {
+        font-size: 1.2rem;
     }
 
     /* 面板全部单列，占满全宽 */
@@ -115,34 +127,10 @@ body, html { height: 100%; margin: 0; font-family: 'Inter', system-ui, sans-seri
     #dialog-title {
         font-size: 18px !important;
     }
-}
-
-/* 深度优化手机端 iframe 滚动体验 */
-#tool-iframe {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100%;
-}
-
-@media screen and (max-width: 600px) {
-    /* 隐藏不必要的侧边栏文字，使其变成纯顶栏 */
-    #nav-list {
-        display: none;
-    }
-    
-    .sidebar {
-        padding: 10px 15px;
-        position: sticky;
-        top: 0;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-    }
-    
-    .logo {
-        font-size: 1.2rem;
-    }
-    
-    .header h1 {
-        font-size: 1.5rem;
+    /* 深度优化手机端 iframe 滚动体验 */
+    #tool-iframe {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100%;
     }
 }

@@ -87,6 +87,10 @@
             background: #f0fdf4;
             color: #16a34a;
         }
+        .badge-neutral {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
         .card-price {
             font-size: 32px;
             font-weight: 700;
@@ -95,6 +99,7 @@
         }
         .price-up { color: #dc2626; }
         .price-down { color: #16a34a; }
+        .price-neutral { color: #6b7280; }
         .card-change {
             display: flex;
             align-items: center;
@@ -104,6 +109,7 @@
         }
         .change-up { color: #dc2626; }
         .change-down { color: #16a34a; }
+        .change-neutral { color: #6b7280; }
         .card-change .arrow {
             font-size: 16px;
         }
@@ -219,6 +225,7 @@
         <span class="material-icons">refresh</span>
     </button>
 
+    <script src="./market_data.js"></script>
     <script>
         function formatPrice(price) {
             if (price === null || price === undefined) return '--';
@@ -238,24 +245,25 @@
         }
 
         function createCard(name, data, isCrypto = false) {
-            const isUp = data.change_pct >= 0;
-            const colorClass = isUp ? 'up' : 'down';
-            const arrow = isUp ? '↑' : '↓';
-            const badgeClass = isUp ? 'badge-up' : 'badge-down';
+            const hasData = data && data.price !== null && data.price !== undefined;
+            const isUp = hasData ? data.change_pct >= 0 : false;
+            const colorClass = hasData ? (isUp ? 'up' : 'down') : 'neutral';
+            const arrow = hasData ? (isUp ? '↑' : '↓') : '-';
+            const badgeClass = hasData ? (isUp ? 'badge-up' : 'badge-down') : 'badge-neutral';
 
             return `
                 <div class="card">
                     <div class="card-header">
                         <span class="card-name">${name}</span>
-                        <span class="card-badge ${badgeClass}">${isUp ? '涨' : '跌'}</span>
+                        <span class="card-badge ${badgeClass}">${hasData ? (isUp ? '涨' : '跌') : '暂无'}</span>
                     </div>
                     <div class="card-price price-${colorClass}">
-                        ${isCrypto ? '$' : ''}${formatPrice(data.price)}${!isCrypto ? '' : ''}
+                        ${isCrypto && hasData ? '$' : ''}${formatPrice(hasData ? data.price : null)}
                     </div>
                     <div class="card-change">
                         <span class="arrow">${arrow}</span>
-                        <span class="change-${colorClass}">${formatChange(data.change)}</span>
-                        <span class="change-${colorClass}">(${formatChangePct(data.change_pct)})</span>
+                        <span class="change-${colorClass}">${formatChange(hasData ? data.change : null)}</span>
+                        <span class="change-${colorClass}">(${formatChangePct(hasData ? data.change_pct : null)})</span>
                     </div>
                 </div>
             `;
@@ -268,41 +276,10 @@
                 if (window.parent && window.parent.GlobalDataManager) {
                     return await window.parent.GlobalDataManager.getStocks(forceRefresh);
                 }
-                // Fallback (if not in iframe)
-                let result = { stocks: {}, crypto: {} };
-                try {
-                    const res = await fetch("https://qt.gtimg.cn/q=s_sh000001,s_sz399001,s_sz399006,s_sh000300,s_us.NDX,s_us.INX,s_us.DJI,s_hkHSI");
-                    const text = await res.text();
-                    const lines = text.split(';');
-                    for (let line of lines) {
-                        let parseLine = (code, name) => {
-                            let regex = new RegExp(`v_s_${code.replace('.', '\.')}=".*?~.*?~.*?~(.*?)~(.*?)~(.*?)~`);
-                            let match = line.match(regex);
-                            if (match) result.stocks[code] = { name: name, price: parseFloat(match[1]), change: parseFloat(match[2]), change_pct: parseFloat(match[3]) };
-                        };
-                        parseLine('sh000001', '上证指数');
-                        parseLine('sz399001', '深证成指');
-                        parseLine('sz399006', '创业板指');
-                        parseLine('sh000300', '沪深300');
-                        parseLine('us.NDX', '纳斯达克100');
-                        parseLine('us.INX', '标普500');
-                        parseLine('us.DJI', '道琼斯');
-                        parseLine('hkHSI', '恒生指数');
-                    }
-                } catch(e) {}
-                try {
-                    const res = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22DOGEUSDT%22%5D');
-                    const data = await res.json();
-                    data.forEach(item => {
-                        result.crypto[item.symbol] = {
-                            name: item.symbol.replace('USDT', ''),
-                            price: parseFloat(item.lastPrice),
-                            change: parseFloat(item.priceChange),
-                            change_pct: parseFloat(item.priceChangePercent)
-                        };
-                    });
-                } catch(e) {}
-                return result;
+                if (!window.StockMarketData || !window.StockMarketData.fetchStocksAndCrypto) {
+                    throw new Error('StockMarketData helper missing');
+                }
+                return await window.StockMarketData.fetchStocksAndCrypto();
             } catch (e) {
                 console.error(e);
                 return null;
